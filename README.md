@@ -17,4 +17,3 @@ The system combines structured data collection, AI-driven analysis, and real-tim
 - Help organizations prioritize and mitigate threats effectively
 - Automate reporting and analysis using AI
 - Support better governance and audit preparation# Front-end
-# Front-end
