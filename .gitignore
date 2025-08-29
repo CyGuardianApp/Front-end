@@ -1,0 +1,73 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you regard as not
+# should be shared. If you want to share the .vscode folder, remove the following line.
+.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# iOS build artifacts
+/ios/build/
+/ios/Pods/
+/ios/Runner.xcworkspace/xcshareddata/
+/ios/Runner.xcworkspace/xcuserdata/
+/ios/Runner.xcuserdata/
+
+# macOS build artifacts
+/macos/build/
+/macos/Pods/
+/macos/Runner.xcworkspace/xcshareddata/
+/macos/Runner.xcworkspace/xcuserdata/
+/macos/Runner.xcuserdata/
+
+# Linux build artifacts
+/linux/build/
+
+# Windows build artifacts
+/windows/build/
+
+# Web build artifacts
+/web/build/
+
+# Coverage
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
