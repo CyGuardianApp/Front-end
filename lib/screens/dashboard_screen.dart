@@ -4,6 +4,7 @@ import '../providers/auth_provider.dart';
 import '../providers/risk_assessment_provider.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/saudi_riyal_symbol.dart';
+import '../models/user.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);

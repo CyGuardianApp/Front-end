@@ -429,9 +429,6 @@ class _QuestionAnswerWidgetState extends State<QuestionAnswerWidget> {
             ),
           ],
         );
-
-      default:
-        return const Text('Unsupported question type');
     }
   }
 }

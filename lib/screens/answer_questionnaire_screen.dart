@@ -122,8 +122,6 @@ class _AnswerQuestionnaireScreenState extends State<AnswerQuestionnaireScreen> {
         return selectedOptions.isNotEmpty;
       case QuestionType.scale:
         return _answers[question.id] != null && _answers[question.id] > 0;
-      default:
-        return true;
     }
   }
 

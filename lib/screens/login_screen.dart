@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../models/user.dart';
 import '../widgets/responsive_container.dart';
 import '../widgets/otp_input.dart';
 import 'package:http/http.dart' as http;

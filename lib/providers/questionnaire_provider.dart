@@ -1,14 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart';
-import '../services/auth_service.dart';
+import '../services/http_service.dart';
+import '../services/token_service.dart';
+import '../config/api_config.dart';
 import '../models/questionnaire.dart';
-import 'auth_provider.dart';
 
 class QuestionnaireProvider with ChangeNotifier {
-  final String baseUrl = AuthService.apiBaseUrl;
+  final String baseUrl = ApiConfig.apiBaseUrl;
 
   List<Questionnaire> _questionnaires = [];
   List<QuestionnaireResponse> _responses = [];
@@ -129,59 +128,61 @@ class QuestionnaireProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.accessToken == null) {
+      final accessToken = await TokenService.getValidAccessToken();
+      if (accessToken == null) {
         _errorMessage = 'Authentication required';
+        _isLoading = false;
+        notifyListeners();
         return false;
       }
 
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${authProvider.accessToken}',
-      };
+      // Create a safe version of the questionnaire data
+      final safeData = _createSafeQuestionnaireData(questionnaire);
 
-      // Debug: Try to encode the questionnaire and catch any errors
-      String jsonBody;
-      try {
-        // Create a safe version of the questionnaire data
-        final safeData = _createSafeQuestionnaireData(questionnaire);
-        jsonBody = jsonEncode(safeData);
-        debugPrint('JSON Body: $jsonBody');
-      } catch (e) {
-        debugPrint('JSON Encoding Error: $e');
-        _errorMessage = 'Failed to encode questionnaire data: $e';
-        return false;
+      if (kDebugMode) {
+        debugPrint('Creating questionnaire with data: ${jsonEncode(safeData)}');
       }
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/questionnaires/'),
-        headers: headers,
-        body: jsonBody,
+      final response = await HttpService.post(
+        ApiConfig.questionnaires,
+        accessToken: accessToken,
+        body: safeData,
       );
 
-      // Debug: Print response status and body
-      debugPrint('Response Status: ${response.statusCode}');
-      debugPrint('Response Body: ${response.body}');
+      if (kDebugMode) {
+        debugPrint('Response Status: ${response.statusCode}');
+        debugPrint('Response Body: ${response.body}');
+      }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final newQ = Questionnaire.fromJson(jsonDecode(response.body));
         _questionnaires.add(newQ);
+        _isLoading = false;
+        notifyListeners();
         return true;
       } else {
         final errorData = jsonDecode(response.body);
-        if (errorData['detail'] != null) {
-          _errorMessage = errorData['detail'];
-        } else {
-          _errorMessage = 'Error: ${response.body}';
-        }
+        _errorMessage = errorData['detail'] ?? 'Failed to create questionnaire';
+        _isLoading = false;
+        notifyListeners();
         return false;
       }
-    } catch (e) {
-      _errorMessage = 'Exception: $e';
-      return false;
-    } finally {
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      if (kDebugMode) {
+        debugPrint('Create questionnaire API error: ${e.message}');
+      }
       _isLoading = false;
       notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Exception: $e';
+      if (kDebugMode) {
+        debugPrint('Create questionnaire error: $e');
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
   }
 
@@ -192,47 +193,51 @@ class QuestionnaireProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.accessToken == null) {
+      final accessToken = await TokenService.getValidAccessToken();
+      if (accessToken == null) {
         _errorMessage = 'Authentication required';
+        _isLoading = false;
+        notifyListeners();
         return false;
       }
 
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${authProvider.accessToken}',
-      };
-
-      final response = await http.put(
-        Uri.parse('$baseUrl/questionnaires/${questionnaire.id}'),
-        headers: headers,
-        body: jsonEncode(_createUpdateQuestionnaireData(questionnaire)),
+      final response = await HttpService.put(
+        ApiConfig.buildUrlWithParams(
+            ApiConfig.questionnaireById, {'id': questionnaire.id}),
+        accessToken: accessToken,
+        body: _createUpdateQuestionnaireData(questionnaire),
       );
 
       if (response.statusCode == 200) {
         final index =
             _questionnaires.indexWhere((q) => q.id == questionnaire.id);
         if (index != -1) _questionnaires[index] = questionnaire;
+        _isLoading = false;
+        notifyListeners();
         return true;
       } else {
-        try {
-          final errorData = jsonDecode(response.body);
-          if (errorData['detail'] != null) {
-            _errorMessage = errorData['detail'];
-          } else {
-            _errorMessage = 'Error: ${response.body}';
-          }
-        } catch (_) {
-          _errorMessage = 'Failed to update (${response.statusCode})';
-        }
+        final errorData = jsonDecode(response.body);
+        _errorMessage = errorData['detail'] ?? 'Failed to update questionnaire';
+        _isLoading = false;
+        notifyListeners();
         return false;
       }
-    } catch (e) {
-      _errorMessage = 'Exception: $e';
-      return false;
-    } finally {
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      if (kDebugMode) {
+        debugPrint('Update questionnaire API error: ${e.message}');
+      }
       _isLoading = false;
       notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Exception: $e';
+      if (kDebugMode) {
+        debugPrint('Update questionnaire error: $e');
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
   }
 
@@ -245,44 +250,50 @@ class QuestionnaireProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.accessToken == null) {
+      final accessToken = await TokenService.getValidAccessToken();
+      if (accessToken == null) {
         _errorMessage = 'Authentication required';
+        _isLoading = false;
+        _isFetchingQuestionnaires = false;
+        notifyListeners();
         return;
       }
 
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${authProvider.accessToken}',
-      };
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/questionnaires/'),
-        headers: headers,
+      final response = await HttpService.get(
+        ApiConfig.questionnaires,
+        accessToken: accessToken,
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List;
-        debugPrint('Received ${data.length} questionnaires from backend');
-        for (var item in data) {
-          debugPrint('  Raw questionnaire data: $item');
+        if (kDebugMode) {
+          debugPrint('Received ${data.length} questionnaires from backend');
+          for (var item in data) {
+            debugPrint('  Raw questionnaire data: $item');
+          }
         }
         _questionnaires = data.map((e) => Questionnaire.fromJson(e)).toList();
-        debugPrint('Parsed ${_questionnaires.length} questionnaires');
-        for (var q in _questionnaires) {
-          debugPrint(
-              '  Parsed questionnaire: ID=${q.id}, Title=${q.title}, Status=${q.status}');
+        if (kDebugMode) {
+          debugPrint('Parsed ${_questionnaires.length} questionnaires');
+          for (var q in _questionnaires) {
+            debugPrint(
+                '  Parsed questionnaire: ID=${q.id}, Title=${q.title}, Status=${q.status}');
+          }
         }
       } else {
         final errorData = jsonDecode(response.body);
-        if (errorData['detail'] != null) {
-          _errorMessage = errorData['detail'];
-        } else {
-          _errorMessage = 'Failed to load: ${response.statusCode}';
-        }
+        _errorMessage = errorData['detail'] ?? 'Failed to load questionnaires';
+      }
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      if (kDebugMode) {
+        debugPrint('Fetch questionnaires API error: ${e.message}');
       }
     } catch (e) {
       _errorMessage = 'Exception: $e';
+      if (kDebugMode) {
+        debugPrint('Fetch questionnaires error: $e');
+      }
     } finally {
       _isLoading = false;
       _isFetchingQuestionnaires = false;
@@ -320,41 +331,48 @@ class QuestionnaireProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.accessToken == null) {
+      final accessToken = await TokenService.getValidAccessToken();
+      if (accessToken == null) {
         _errorMessage = 'Authentication required';
+        _isLoading = false;
+        notifyListeners();
         return false;
       }
 
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${authProvider.accessToken}',
-      };
-
-      final res = await http.post(
-        Uri.parse('$baseUrl/questionnaire_responses/'),
-        headers: headers,
-        body: jsonEncode(response.toJson()),
+      final res = await HttpService.post(
+        ApiConfig.questionnaireResponses,
+        accessToken: accessToken,
+        body: response.toJson(),
       );
 
       if (res.statusCode == 200 || res.statusCode == 201) {
         _responses.add(response);
+        _isLoading = false;
+        notifyListeners();
         return true;
       } else {
         final errorData = jsonDecode(res.body);
-        if (errorData['detail'] != null) {
-          _errorMessage = errorData['detail'];
-        } else {
-          _errorMessage = 'Failed to submit: ${res.body}';
-        }
+        _errorMessage = errorData['detail'] ?? 'Failed to submit response';
+        _isLoading = false;
+        notifyListeners();
         return false;
       }
-    } catch (e) {
-      _errorMessage = 'Exception: $e';
-      return false;
-    } finally {
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      if (kDebugMode) {
+        debugPrint('Submit response API error: ${e.message}');
+      }
       _isLoading = false;
       notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Exception: $e';
+      if (kDebugMode) {
+        debugPrint('Submit response error: $e');
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
   }
 
@@ -390,20 +408,18 @@ class QuestionnaireProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.accessToken == null) {
+      final accessToken = await TokenService.getValidAccessToken();
+      if (accessToken == null) {
         _errorMessage = 'Authentication required';
+        _isLoading = false;
+        _isFetchingResponses = false;
+        notifyListeners();
         return;
       }
 
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${authProvider.accessToken}',
-      };
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/questionnaire_responses/'),
-        headers: headers,
+      final response = await HttpService.get(
+        ApiConfig.questionnaireResponses,
+        accessToken: accessToken,
       );
 
       if (response.statusCode == 200) {
@@ -412,14 +428,18 @@ class QuestionnaireProvider with ChangeNotifier {
             data.map((e) => QuestionnaireResponse.fromJson(e)).toList();
       } else {
         final errorData = jsonDecode(response.body);
-        if (errorData['detail'] != null) {
-          _errorMessage = errorData['detail'];
-        } else {
-          _errorMessage = 'Failed to load responses';
-        }
+        _errorMessage = errorData['detail'] ?? 'Failed to load responses';
+      }
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      if (kDebugMode) {
+        debugPrint('Fetch responses API error: ${e.message}');
       }
     } catch (e) {
       _errorMessage = 'Exception: $e';
+      if (kDebugMode) {
+        debugPrint('Fetch responses error: $e');
+      }
     } finally {
       _isLoading = false;
       _isFetchingResponses = false;

@@ -19,16 +19,29 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'],
-      name: json['name'],
-      email: json['email'],
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      email: json['email'] ?? '',
       role: UserRole.values.firstWhere(
-        (role) => role.toString() == json['role'],
+        (role) => role.name == json['role'],
+        orElse: () => UserRole.subDepartmentHead,
       ),
-      departmentId: json['departmentId'],
-      departmentName: json['departmentName'],
-      company: json['company'], // Add company field
+      departmentId: json['department_id'] ?? json['departmentId'] ?? '',
+      departmentName: json['department_name'] ?? json['departmentName'],
+      company: json['company'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'email': email,
+      'role': role.name,
+      'department_id': departmentId,
+      'department_name': departmentName,
+      'company': company,
+    };
   }
 }
 

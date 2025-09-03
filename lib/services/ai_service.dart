@@ -1,46 +1,202 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import '../models/company_history.dart';
+import '../services/http_service.dart';
+import '../services/token_service.dart';
+import '../config/api_config.dart';
 
 class AIService {
-  // In a real application, this would be an API endpoint
-  static const String _endpoint = 'https://api.example.com/ai';
-
-  // For demonstration purposes, we'll simulate API calls
+  /// Generate risk assessment using AI service
   Future<Map<String, dynamic>> generateRiskAssessment(
     CompanyHistory companyHistory,
     List<Map<String, dynamic>> questionnaireResponses,
   ) async {
-    // Simulate API call delay
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      final accessToken = await TokenService.getValidAccessToken();
+      if (accessToken == null) {
+        throw ApiException('Authentication required for AI analysis');
+      }
 
-    // Convert company history to the format needed for AI analysis
-    final companyData = companyHistory.toAIAnalysisFormat();
+      // Prepare data for AI analysis
+      final analysisData = {
+        'company_history': companyHistory.toAIAnalysisFormat(),
+        'questionnaire_responses': questionnaireResponses,
+        'analysis_type': 'comprehensive_risk_assessment',
+        'timestamp': DateTime.now().toIso8601String(),
+      };
 
-    // In a real implementation, we would send companyData and questionnaireResponses
-    // to an AI service and get back a risk assessment
+      final response = await HttpService.post(
+        ApiConfig.buildUrl('/ai/risk-assessment'),
+        accessToken: accessToken,
+        body: analysisData,
+      );
 
-    // For demonstration, we'll generate a risk score based on some factors
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+
+        // Validate response structure
+        if (result is Map<String, dynamic> &&
+            result.containsKey('riskScore') &&
+            result.containsKey('riskLevel')) {
+          return result;
+        } else {
+          throw ApiException('Invalid AI service response format');
+        }
+      } else {
+        throw ApiException('AI service returned error: ${response.statusCode}');
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      if (kDebugMode) {
+        print('AI service error: $e');
+      }
+
+      // Fallback to mock data if AI service is unavailable
+      return _generateFallbackRiskAssessment(
+          companyHistory, questionnaireResponses);
+    }
+  }
+
+  /// Generate PDF report using AI service
+  Future<String> generateReport({
+    required double riskValue,
+    required List<String> recommendations,
+    required double estimatedCost,
+    required String departmentData,
+  }) async {
+    try {
+      final accessToken = await TokenService.getValidAccessToken();
+      if (accessToken == null) {
+        throw ApiException('Authentication required for report generation');
+      }
+
+      final reportData = {
+        'risk_value': riskValue,
+        'recommendations': recommendations,
+        'estimated_cost': estimatedCost,
+        'department_data': departmentData,
+        'report_type': 'comprehensive_security_report',
+        'format': 'pdf',
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      final response = await HttpService.post(
+        ApiConfig.buildUrl('/ai/generate-report'),
+        accessToken: accessToken,
+        body: reportData,
+      );
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+
+        // Return the report URL or content
+        return result['report_url'] ?? result['report_content'] ?? '';
+      } else {
+        throw ApiException('Report generation failed: ${response.statusCode}');
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Report generation error: $e');
+      }
+
+      // Fallback to mock report
+      return _generateFallbackReport(
+        riskValue: riskValue,
+        recommendations: recommendations,
+        estimatedCost: estimatedCost,
+        departmentData: departmentData,
+      );
+    }
+  }
+
+  /// Get AI service health status
+  Future<bool> isHealthy() async {
+    try {
+      final response = await HttpService.get(
+        ApiConfig.buildUrl('/ai/health'),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      if (kDebugMode) {
+        print('AI service health check failed: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Get AI service status with detailed information
+  Future<Map<String, dynamic>> getServiceStatus() async {
+    try {
+      final response = await HttpService.get(
+        ApiConfig.buildUrl('/ai/status'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': 'healthy',
+          'service': 'ai-service',
+          'version': data['version'] ?? 'unknown',
+          'capabilities': data['capabilities'] ?? [],
+          'timestamp': DateTime.now().toIso8601String(),
+        };
+      } else {
+        return {
+          'status': 'unhealthy',
+          'error': 'HTTP ${response.statusCode}',
+          'timestamp': DateTime.now().toIso8601String(),
+        };
+      }
+    } catch (e) {
+      return {
+        'status': 'error',
+        'error': e.toString(),
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+    }
+  }
+
+  /// Fallback risk assessment when AI service is unavailable
+  Map<String, dynamic> _generateFallbackRiskAssessment(
+    CompanyHistory companyHistory,
+    List<Map<String, dynamic>> questionnaireResponses,
+  ) {
+    if (kDebugMode) {
+      print('Using fallback risk assessment - AI service unavailable');
+    }
+
+    // Calculate risk score based on available data
     int riskScore = 50; // Base risk score
 
     // Adjust based on security tools
     if (companyHistory.toolId.isNotEmpty) {
-      riskScore -= 3; // Reduce risk if security tool is present
+      riskScore -= 3;
     }
 
     // Adjust based on policy documents
     if (companyHistory.policyId.isNotEmpty) {
-      riskScore -= 2; // Reduce risk if policy document is present
+      riskScore -= 2;
     }
 
     // Adjust based on incidents
     if (companyHistory.incidentId.isNotEmpty) {
-      riskScore += 5; // Increase risk if incident is recorded
+      riskScore += 5;
+    }
+
+    // Adjust based on questionnaire responses
+    for (var response in questionnaireResponses) {
+      if (response['risk_indicators'] != null) {
+        riskScore += (response['risk_indicators'] as int? ?? 0);
+      }
     }
 
     // Ensure risk score is within bounds
     riskScore = riskScore.clamp(10, 90);
 
-    // Determine risk level based on score
+    // Determine risk level
     String riskLevel;
     if (riskScore < 40) {
       riskLevel = 'Low';
@@ -50,7 +206,31 @@ class AIService {
       riskLevel = 'High';
     }
 
-    // Generate mock recommendations based on data
+    // Generate findings
+    List<Map<String, dynamic>> findings =
+        _generateFallbackFindings(companyHistory);
+
+    // Calculate total remediation cost
+    double totalRemediationCost = 0.0;
+    for (var finding in findings) {
+      totalRemediationCost += (finding['estimatedCost'] as num).toDouble();
+    }
+
+    return {
+      'riskScore': riskScore,
+      'riskLevel': riskLevel,
+      'findings': findings,
+      'totalRemediationCost': totalRemediationCost,
+      'timestamp': DateTime.now().toIso8601String(),
+      'projectedRiskScoreAfterRemediation': (riskScore * 0.7).round(),
+      'fallback_mode': true,
+      'note': 'AI service unavailable - using fallback analysis',
+    };
+  }
+
+  /// Generate fallback findings
+  List<Map<String, dynamic>> _generateFallbackFindings(
+      CompanyHistory companyHistory) {
     List<Map<String, dynamic>> findings = [];
 
     // Check for security tool categories
@@ -96,7 +276,7 @@ class AIService {
       });
     }
 
-    // Add some generic findings
+    // Add generic findings
     findings.add({
       'id': '4',
       'category': 'Security Training',
@@ -115,39 +295,24 @@ class AIService {
       'estimatedCost': 7000,
     });
 
-    // Calculate total remediation cost - FIXED
-    double totalRemediationCost = 0.0;
-    for (var finding in findings) {
-      totalRemediationCost += (finding['estimatedCost'] as num).toDouble();
-    }
-
-    return {
-      'riskScore': riskScore,
-      'riskLevel': riskLevel,
-      'findings': findings,
-      'totalRemediationCost': totalRemediationCost,
-      'timestamp': DateTime.now().toIso8601String(),
-      'projectedRiskScoreAfterRemediation': (riskScore * 0.7).round(),
-    };
+    return findings;
   }
 
-  Future<String> generateReport({
+  /// Generate fallback report
+  String _generateFallbackReport({
     required double riskValue,
     required List<String> recommendations,
     required double estimatedCost,
     required String departmentData,
-  }) async {
-    // Simulate API call delay
-    await Future.delayed(const Duration(seconds: 3));
-
-    // In a real application, this would generate a PDF report
-    // For demonstration, we'll return a JSON string
+  }) {
     final reportData = {
       'riskValue': riskValue,
       'recommendations': recommendations,
       'estimatedCost': estimatedCost,
       'departmentData': departmentData,
       'generatedAt': DateTime.now().toIso8601String(),
+      'fallback_mode': true,
+      'note': 'AI service unavailable - using fallback report generation',
     };
 
     return jsonEncode(reportData);

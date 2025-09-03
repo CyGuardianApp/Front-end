@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../services/auth_service.dart';
-// import 'auth_provider.dart';
+import '../services/http_service.dart';
+import '../services/token_service.dart';
+import '../config/api_config.dart';
 import '../models/company_history.dart';
 
 class CompanyHistoryProvider with ChangeNotifier {
@@ -10,8 +10,6 @@ class CompanyHistoryProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   String? _accessToken;
-
-  String get _baseUrl => AuthService.apiBaseUrl;
 
   CompanyHistory? get companyHistory => _companyHistory;
   bool get isLoading => _isLoading;
@@ -31,38 +29,60 @@ class CompanyHistoryProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final headers = <String, String>{'Content-Type': 'application/json'};
-      final token = accessToken ?? _accessToken;
-      if (token != null && token.isNotEmpty) {
-        headers['Authorization'] = 'Bearer $token';
+      final token = accessToken ??
+          _accessToken ??
+          await TokenService.getValidAccessToken();
+      if (token == null) {
+        _errorMessage = 'Authentication required. Please log in again.';
+        _isLoading = false;
+        notifyListeners();
+        return;
       }
-      final response = await http.get(
-        Uri.parse('$_baseUrl/company-history/'),
-        headers: headers,
+
+      final response = await HttpService.get(
+        ApiConfig.companyHistory,
+        accessToken: token,
       );
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        print(">> Company history data received: ${data.length} records");
+        if (kDebugMode) {
+          print(">> Company history data received: ${data.length} records");
+        }
 
         if (data.isNotEmpty) {
           _companyHistory =
               CompanyHistory.fromJson(data.last as Map<String, dynamic>);
-          print(">> Company history loaded successfully");
+          if (kDebugMode) {
+            print(">> Company history loaded successfully");
+          }
         } else {
-          print(">> No company history found, initializing empty history");
+          if (kDebugMode) {
+            print(">> No company history found, initializing empty history");
+          }
           _initializeEmptyHistory();
         }
       } else if (response.statusCode == 401) {
         _errorMessage = 'Authentication required. Please log in again.';
-        print(">> Authentication error: ${response.body}");
+        if (kDebugMode) {
+          print(">> Authentication error: ${response.body}");
+        }
       } else {
         _errorMessage = 'Failed to load data (${response.statusCode})';
-        print(">> Error response: ${response.body}");
+        if (kDebugMode) {
+          print(">> Error response: ${response.body}");
+        }
+      }
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      if (kDebugMode) {
+        print(">> API Exception in loadCompanyHistory: ${e.message}");
       }
     } catch (e) {
       _errorMessage = 'Error loading data: $e';
-      print(">> Exception in loadCompanyHistory: $e");
+      if (kDebugMode) {
+        print(">> Exception in loadCompanyHistory: $e");
+      }
     }
 
     _isLoading = false;
@@ -76,6 +96,16 @@ class CompanyHistoryProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      final token = accessToken ??
+          _accessToken ??
+          await TokenService.getValidAccessToken();
+      if (token == null) {
+        _errorMessage = 'Authentication required. Please log in again.';
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
       final jsonBody = history.toJson();
 
       bool isValidUuid(String value) {
@@ -85,32 +115,38 @@ class CompanyHistoryProvider with ChangeNotifier {
       }
 
       final bool isUpdating = history.id.isNotEmpty && isValidUuid(history.id);
-      final request = http.Request(
-        isUpdating ? 'PUT' : 'POST',
-        Uri.parse(isUpdating
-            ? '$_baseUrl/company-history/${history.id}'
-            : '$_baseUrl/company-history/'),
-      );
-      request.headers['Content-Type'] = 'application/json';
-      final token = accessToken ?? _accessToken;
-      if (token != null && token.isNotEmpty) {
-        request.headers['Authorization'] = 'Bearer $token';
-      }
-      request.body = jsonEncode(jsonBody);
 
-      final streamedResponse = await request.send();
-      final responseData = await http.Response.fromStream(streamedResponse);
+      final response = isUpdating
+          ? await HttpService.put(
+              ApiConfig.buildUrlWithParams(
+                  ApiConfig.companyHistoryById, {'id': history.id}),
+              accessToken: token,
+              body: jsonBody,
+            )
+          : await HttpService.post(
+              ApiConfig.companyHistory,
+              accessToken: token,
+              body: jsonBody,
+            );
 
-      if (responseData.statusCode == 200 || responseData.statusCode == 201) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         _companyHistory = CompanyHistory.fromJson(
-            jsonDecode(responseData.body) as Map<String, dynamic>);
+            jsonDecode(response.body) as Map<String, dynamic>);
         // Ensure we reflect the server state
         await loadCompanyHistory();
       } else {
-        _errorMessage = 'فشل الحفظ (${responseData.statusCode})';
+        _errorMessage = 'Failed to save data (${response.statusCode})';
+      }
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      if (kDebugMode) {
+        print(">> API Exception in saveCompanyHistory: ${e.message}");
       }
     } catch (e) {
-      _errorMessage = 'خطأ أثناء الحفظ: $e';
+      _errorMessage = 'Error saving data: $e';
+      if (kDebugMode) {
+        print(">> Exception in saveCompanyHistory: $e");
+      }
     }
 
     _isLoading = false;

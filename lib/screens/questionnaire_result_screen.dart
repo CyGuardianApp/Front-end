@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/questionnaire.dart';
 import '../providers/questionnaire_provider.dart';
-import '../providers/auth_provider.dart';
 import 'questionnaire_list_screen.dart';
 import 'response_detail_screen.dart';
 
@@ -17,7 +15,6 @@ class QuestionnaireResultScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final questionnaireProvider = Provider.of<QuestionnaireProvider>(context);
-    final authProvider = Provider.of<AuthProvider>(context);
 
     // Get the response
     final response = questionnaireProvider.getResponseById(responseId);

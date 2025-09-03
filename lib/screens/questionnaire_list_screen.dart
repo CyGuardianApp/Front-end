@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/questionnaire.dart';
 import '../providers/questionnaire_provider.dart';
 import '../providers/auth_provider.dart';
+import '../models/user.dart' as user_model;
 import 'create_questionnaire_screen.dart';
 import 'answer_questionnaire_screen.dart';
 import 'response_detail_screen.dart';
@@ -80,7 +81,7 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
     }
 
     // Different views based on user role
-    bool isCSHead = user.role == UserRole.cyberSecurityHead;
+    bool isCSHead = user.role == user_model.UserRole.cyberSecurityHead;
 
     return Scaffold(
       key: ValueKey(_refreshKey),
@@ -131,15 +132,48 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
         controller: _tabController,
         children: [
           // All/Pending Questionnaires Tab
-          _buildQuestionnaireList(context, questionnaireProvider, user,
-              isCSHead, isCSHead ? null : QuestionnaireStatus.published),
+          _buildQuestionnaireList(
+              context,
+              questionnaireProvider,
+              user_model.User(
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                departmentId: user.domain,
+                departmentName: user.departmentName,
+              ),
+              isCSHead,
+              isCSHead ? null : QuestionnaireStatus.published),
 
           // Completed Questionnaires Tab
-          _buildQuestionnaireList(context, questionnaireProvider, user,
-              isCSHead, QuestionnaireStatus.completed),
+          _buildQuestionnaireList(
+              context,
+              questionnaireProvider,
+              user_model.User(
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                departmentId: user.domain,
+                departmentName: user.departmentName,
+              ),
+              isCSHead,
+              QuestionnaireStatus.completed),
 
           // Drafts Tab
-          _buildDraftsList(context, questionnaireProvider, user, isCSHead),
+          _buildDraftsList(
+              context,
+              questionnaireProvider,
+              user_model.User(
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                departmentId: user.domain,
+                departmentName: user.departmentName,
+              ),
+              isCSHead),
         ],
       ),
 
@@ -164,7 +198,7 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
   Widget _buildQuestionnaireList(
     BuildContext context,
     QuestionnaireProvider questionnaireProvider,
-    User user,
+    user_model.User user,
     bool isCSHead,
     QuestionnaireStatus? status,
   ) {
@@ -261,7 +295,7 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
   Widget _buildDraftsList(
     BuildContext context,
     QuestionnaireProvider questionnaireProvider,
-    User user,
+    user_model.User user,
     bool isCSHead,
   ) {
     // For CS Head: show draft questionnaires

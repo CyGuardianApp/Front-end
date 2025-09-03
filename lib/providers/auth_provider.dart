@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../services/auth_service.dart';
+import '../services/auth_service.dart' as auth_service;
 import '../services/otp_service.dart';
-
-enum UserRole { cto, cyberSecurityHead, subDepartmentHead }
+import '../services/http_service.dart';
+import '../services/token_service.dart';
+import '../config/api_config.dart';
+import '../models/user.dart';
 
 class Organization {
   final String id;
@@ -42,7 +44,7 @@ class User {
 }
 
 class AuthProvider extends ChangeNotifier {
-  final AuthService _authService;
+  final auth_service.AuthService _authService;
   final OTPService _otpService;
   User? _user;
   bool _isAuthenticated = false;
@@ -52,40 +54,46 @@ class AuthProvider extends ChangeNotifier {
 
   final List<Organization> _organizations = [];
 
-  final List<User> _testUsers = [
-    User(
-      id: '1',
-      name: 'CTO User',
-      email: 'cto@example.com',
-      role: UserRole.cto,
-      domain: 'example.com',
-    ),
-    User(
-      id: '2',
-      name: 'Cybersecurity Head',
-      email: 'cs@example.com',
-      role: UserRole.cyberSecurityHead,
-      domain: 'example.com',
-    ),
-    User(
-      id: '3',
-      name: 'Sub-Department Head',
-      email: 'sub@example.com',
-      role: UserRole.subDepartmentHead,
-      domain: 'example.com',
-    ),
-  ];
+  // Test data only available in debug mode
+  final List<User> _testUsers = kDebugMode
+      ? [
+          User(
+            id: '1',
+            name: 'CTO User',
+            email: 'cto@example.com',
+            role: UserRole.cto,
+            domain: 'example.com',
+          ),
+          User(
+            id: '2',
+            name: 'Cybersecurity Head',
+            email: 'cs@example.com',
+            role: UserRole.cyberSecurityHead,
+            domain: 'example.com',
+          ),
+          User(
+            id: '3',
+            name: 'Sub-Department Head',
+            email: 'sub@example.com',
+            role: UserRole.subDepartmentHead,
+            domain: 'example.com',
+          ),
+        ]
+      : [];
 
   AuthProvider(this._authService, this._otpService) {
-    _organizations.add(
-      Organization(
-        id: '1',
-        domain: 'example.com',
-        cto: _testUsers[0],
-        cyberSecurityHead: _testUsers[1],
-        subDepartmentHeads: [_testUsers[2]],
-      ),
-    );
+    // Only add test organization in debug mode
+    if (kDebugMode && _testUsers.isNotEmpty) {
+      _organizations.add(
+        Organization(
+          id: '1',
+          domain: 'example.com',
+          cto: _testUsers[0],
+          cyberSecurityHead: _testUsers[1],
+          subDepartmentHeads: [_testUsers[2]],
+        ),
+      );
+    }
   }
 
   User? get user => _user;
@@ -146,40 +154,84 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await http.post(
-        Uri.parse('${AuthService.apiBaseUrl}/login'),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: {
-          'username': email,
-          'password': password,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _user = User(
-          id: data['user_id'],
-          name: data['name'],
-          email: data['email'],
-          role: UserRole.values.firstWhere((r) => r.name == data['role']),
-          domain: data['department_id'],
-          departmentName: data['department_name'],
-        );
-        _accessToken = data['access_token'];
-        _isAuthenticated = true;
+      // Validate input
+      if (email.isEmpty || password.isEmpty) {
+        _errorMessage = 'Please enter both email and password';
         _isLoading = false;
         notifyListeners();
-        return true;
-      } else {
-        _errorMessage = 'Invalid email or password';
+        return false;
+      }
+
+      if (!_isValidEmail(email)) {
+        _errorMessage = 'Please enter a valid email address';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Call the auth service
+      final data = await _authService.signIn(email, password);
+
+      // Parse user data
+      _user = User(
+        id: data['user_id'] ?? data['id'] ?? '',
+        name: data['name'] ?? email.split('@')[0],
+        email: data['email'] ?? email,
+        role: UserRole.values.firstWhere(
+          (r) => r.name == data['role'],
+          orElse: () => UserRole.subDepartmentHead,
+        ),
+        domain: data['department_id'] ?? _extractDomain(email),
+        departmentName: data['department_name'],
+      );
+
+      _accessToken = data['access_token'];
+
+      // Save tokens and user data
+      if (_accessToken != null) {
+        await TokenService.saveTokens(
+          accessToken: _accessToken!,
+          refreshToken: data['refresh_token'],
+          expiry: data['expires_in'] != null
+              ? DateTime.now().add(Duration(seconds: data['expires_in']))
+              : null,
+        );
+
+        await TokenService.saveUserData({
+          'id': _user!.id,
+          'name': _user!.name,
+          'email': _user!.email,
+          'role': _user!.role.name,
+          'domain': _user!.domain,
+          'departmentName': _user!.departmentName,
+        });
+      }
+
+      _isAuthenticated = true;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      if (kDebugMode) {
+        print('Login API error: ${e.message} (${e.statusCode})');
       }
     } catch (e) {
-      _errorMessage = 'Login failed. Please try again.';
+      _errorMessage =
+          'Login failed. Please check your internet connection and try again.';
+      if (kDebugMode) {
+        print('Login error: $e');
+      }
     }
 
     _isLoading = false;
     notifyListeners();
     return false;
+  }
+
+  /// Validate email format
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
   }
 
   Future<bool> register(
@@ -190,6 +242,29 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Validate input
+      if (email.isEmpty || password.isEmpty || otp.isEmpty) {
+        _errorMessage = 'Please fill in all required fields';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      if (!_isValidEmail(email)) {
+        _errorMessage = 'Please enter a valid email address';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      if (password.length < 6) {
+        _errorMessage = 'Password must be at least 6 characters long';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Verify OTP first
       final otpValid = await verifyOTP(email, otp);
       if (!otpValid) {
         _isLoading = false;
@@ -197,75 +272,82 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
-      final domain = _extractDomain(email);
-      final existingUser = _findUserByEmail(email);
-      if (existingUser != null) {
-        _errorMessage = 'A user with this email already exists';
+      // Check if user already exists (only in debug mode with test data)
+      if (kDebugMode) {
+        final existingUser = _findUserByEmail(email);
+        if (existingUser != null) {
+          _errorMessage = 'A user with this email already exists';
+          _isLoading = false;
+          notifyListeners();
+          return false;
+        }
+      }
+
+      // Call the auth service to register
+      final data = await _authService.signUp(
+        email,
+        password,
+        role,
+        name: email.split('@')[0],
+        departmentName: departmentName,
+      );
+
+      // Parse user data
+      _user = User(
+        id: data['id'] ?? '',
+        name: data['name'] ?? email.split('@')[0],
+        email: data['email'] ?? email,
+        role: UserRole.values.firstWhere(
+          (r) => r.name == data['role'],
+          orElse: () => role,
+        ),
+        domain: data['department_id'] ?? _extractDomain(email),
+        departmentName: data['department_name'] ?? departmentName,
+      );
+
+      // Try to auto-login after registration
+      final loggedIn = await login(email, password);
+      if (!loggedIn) {
+        _errorMessage =
+            'Registration successful, but auto-login failed. Please log in manually.';
         _isLoading = false;
         notifyListeners();
         return false;
       }
 
-      Organization? organization = findOrganizationByDomain(domain);
+      // Update organization data (only in debug mode)
+      if (kDebugMode) {
+        final domain = _extractDomain(email);
+        Organization? organization = findOrganizationByDomain(domain);
 
-      final response = await http.post(
-        Uri.parse('${AuthService.apiBaseUrl}/users/'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'name': email.split('@')[0],
-          'email': email,
-          'password': password,
-          'role': role.name,
-          'department_id': domain,
-          'department_name': departmentName,
-        }),
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        _user = User(
-          id: data['id'],
-          name: data['name'],
-          email: data['email'],
-          role: UserRole.values.firstWhere((r) => r.name == data['role']),
-          domain: data['department_id'],
-          departmentName: data['department_name'],
-        );
-        // Acquire access token so subsequent calls (like fetching sub-department heads) work
-        final loggedIn = await login(email, password);
-        if (!loggedIn) {
-          _errorMessage = 'Registered but auto-login failed';
-        }
-      } else {
-        _errorMessage = 'Registration failed';
-      }
-
-      if (organization == null) {
-        organization = Organization(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          domain: domain,
-          cto: role == UserRole.cto ? _user : null,
-          cyberSecurityHead: role == UserRole.cyberSecurityHead ? _user : null,
-        );
-        _organizations.add(organization);
-      } else {
-        final index = _organizations.indexOf(organization);
-        if (role == UserRole.cto) {
-          _organizations[index] = Organization(
-            id: organization.id,
-            domain: organization.domain,
-            cto: _user,
-            cyberSecurityHead: organization.cyberSecurityHead,
-            subDepartmentHeads: organization.subDepartmentHeads,
+        if (organization == null) {
+          organization = Organization(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            domain: domain,
+            cto: role == UserRole.cto ? _user : null,
+            cyberSecurityHead:
+                role == UserRole.cyberSecurityHead ? _user : null,
           );
-        } else if (role == UserRole.cyberSecurityHead) {
-          _organizations[index] = Organization(
-            id: organization.id,
-            domain: organization.domain,
-            cto: organization.cto,
-            cyberSecurityHead: _user,
-            subDepartmentHeads: organization.subDepartmentHeads,
-          );
+          _organizations.add(organization);
+        } else {
+          final index = _organizations.indexOf(organization);
+          if (role == UserRole.cto) {
+            _organizations[index] = Organization(
+              id: organization.id,
+              domain: organization.domain,
+              cto: _user,
+              cyberSecurityHead: organization.cyberSecurityHead,
+              subDepartmentHeads: organization.subDepartmentHeads,
+            );
+          } else if (role == UserRole.cyberSecurityHead) {
+            _organizations[index] = Organization(
+              id: organization.id,
+              domain: organization.domain,
+              cto: organization.cto,
+              cyberSecurityHead: _user,
+              subDepartmentHeads: organization.subDepartmentHeads,
+            );
+          }
         }
       }
 
@@ -273,13 +355,22 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      if (kDebugMode) {
+        print('Registration API error: ${e.message} (${e.statusCode})');
+      }
     } catch (e) {
-      _isLoading = false;
       _errorMessage =
           'An error occurred during registration. Please try again.';
-      notifyListeners();
-      return false;
+      if (kDebugMode) {
+        print('Registration error: $e');
+      }
     }
+
+    _isLoading = false;
+    notifyListeners();
+    return false;
   }
 
   Future<bool> sendOTP(String email) async {
@@ -288,36 +379,36 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Call the real backend OTP service
-      final response = await http.post(
-        Uri.parse('${AuthService.apiBaseUrl}/otp/generate-otp'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'user_name': email.split('@')[0], // Extract name from email
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _isLoading = false;
-        notifyListeners();
-        return true;
-      } else {
-        final errorBody = jsonDecode(response.body);
-        _errorMessage =
-            errorBody['detail'] ?? 'Failed to send OTP. Please try again.';
+      // Validate email
+      if (email.isEmpty || !_isValidEmail(email)) {
+        _errorMessage = 'Please enter a valid email address';
         _isLoading = false;
         notifyListeners();
         return false;
       }
-    } catch (e) {
+
+      // Call the OTP service
+      await _otpService.sendOTP(email, userName: email.split('@')[0]);
+
       _isLoading = false;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      if (kDebugMode) {
+        print('Send OTP API error: ${e.message} (${e.statusCode})');
+      }
+    } catch (e) {
       _errorMessage =
           'Failed to send OTP. Please check your internet connection.';
-      notifyListeners();
-      return false;
+      if (kDebugMode) {
+        print('Send OTP error: $e');
+      }
     }
+
+    _isLoading = false;
+    notifyListeners();
+    return false;
   }
 
   Future<bool> verifyOTP(String email, String otp) async {
@@ -326,48 +417,76 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Call the real backend OTP verification service
-      final response = await http.post(
-        Uri.parse('${AuthService.apiBaseUrl}/otp/verify-otp'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'otp': otp,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        bool isValid = data['verified'] == true;
-
-        if (!isValid) {
-          _errorMessage = 'Invalid OTP. Please try again.';
-        }
-
-        _isLoading = false;
-        notifyListeners();
-        return isValid;
-      } else {
-        final errorBody = jsonDecode(response.body);
-        _errorMessage =
-            errorBody['detail'] ?? 'Failed to verify OTP. Please try again.';
+      // Validate input
+      if (email.isEmpty || otp.isEmpty) {
+        _errorMessage = 'Please enter both email and OTP';
         _isLoading = false;
         notifyListeners();
         return false;
       }
-    } catch (e) {
+
+      if (!_isValidEmail(email)) {
+        _errorMessage = 'Please enter a valid email address';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Call the OTP service
+      final response = await _otpService.verifyOTP(email, otp);
+      bool isValid = response['verified'] == true;
+
+      if (!isValid) {
+        _errorMessage = 'Invalid OTP. Please try again.';
+      }
+
       _isLoading = false;
+      notifyListeners();
+      return isValid;
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      if (kDebugMode) {
+        print('Verify OTP API error: ${e.message} (${e.statusCode})');
+      }
+    } catch (e) {
       _errorMessage =
           'Failed to verify OTP. Please check your internet connection.';
-      notifyListeners();
-      return false;
+      if (kDebugMode) {
+        print('Verify OTP error: $e');
+      }
     }
+
+    _isLoading = false;
+    notifyListeners();
+    return false;
   }
 
-  void logout() {
-    _user = null;
-    _isAuthenticated = false;
-    _accessToken = null;
+  Future<void> logout() async {
+    try {
+      // Clear tokens from storage
+      await TokenService.clearTokens();
+
+      // Clear local state
+      _user = null;
+      _isAuthenticated = false;
+      _accessToken = null;
+
+      // Call auth service logout if needed
+      await _authService.signOut();
+
+      if (kDebugMode) {
+        print('User logged out successfully');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Logout error: $e');
+      }
+      // Even if logout fails, clear local state
+      _user = null;
+      _isAuthenticated = false;
+      _accessToken = null;
+    }
+
     notifyListeners();
   }
 
@@ -378,41 +497,52 @@ class AuthProvider extends ChangeNotifier {
 
   Future<List<User>> fetchSubDepartmentHeadsByDomain(String domain) async {
     try {
-      if (_accessToken == null) {
-        debugPrint('No access token available for fetching users');
+      final accessToken = await TokenService.getValidAccessToken();
+      if (accessToken == null) {
+        if (kDebugMode) {
+          print('No valid access token available for fetching users');
+        }
         return [];
       }
 
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $_accessToken',
-      };
-
-      final response = await http.get(
-        Uri.parse(
-            '${AuthService.apiBaseUrl}/users/?domain=$domain&role=subDepartmentHead'),
-        headers: headers,
+      final response = await HttpService.get(
+        ApiConfig.users,
+        accessToken: accessToken,
+        queryParams: {
+          'domain': domain,
+          'role': 'subDepartmentHead',
+        },
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List;
         return data
             .map((userJson) => User(
-                  id: userJson['id'],
-                  name: userJson['name'],
-                  email: userJson['email'],
-                  role: UserRole.values
-                      .firstWhere((r) => r.name == userJson['role']),
-                  domain: userJson['department_id'],
+                  id: userJson['id'] ?? '',
+                  name: userJson['name'] ?? '',
+                  email: userJson['email'] ?? '',
+                  role: UserRole.values.firstWhere(
+                    (r) => r.name == userJson['role'],
+                    orElse: () => UserRole.subDepartmentHead,
+                  ),
+                  domain: userJson['department_id'] ?? domain,
                   departmentName: userJson['department_name'],
                 ))
             .toList();
       } else {
-        debugPrint(
-            'Failed to fetch users: ${response.statusCode} - ${response.body}');
+        if (kDebugMode) {
+          print(
+              'Failed to fetch users: ${response.statusCode} - ${response.body}');
+        }
+      }
+    } on ApiException catch (e) {
+      if (kDebugMode) {
+        print('Failed to fetch users: ${e.message} (${e.statusCode})');
       }
     } catch (e) {
-      debugPrint('Failed to fetch users: $e');
+      if (kDebugMode) {
+        print('Failed to fetch users: $e');
+      }
     }
     return [];
   }
@@ -424,6 +554,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Validate permissions
       if (_user?.role != UserRole.cyberSecurityHead) {
         _errorMessage =
             'Only Cybersecurity Heads can create Sub-Department Heads';
@@ -432,65 +563,104 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
-      final domain = _extractDomain(email);
-      if (domain != _user!.domain) {
-        _errorMessage =
-            'Email domain must match your organization domain ($domain)';
+      // Validate input
+      if (name.isEmpty ||
+          email.isEmpty ||
+          password.isEmpty ||
+          departmentName.isEmpty) {
+        _errorMessage = 'Please fill in all required fields';
         _isLoading = false;
         notifyListeners();
         return false;
       }
 
-      final response = await http.post(
-        Uri.parse('${AuthService.apiBaseUrl}/users/'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
+      if (!_isValidEmail(email)) {
+        _errorMessage = 'Please enter a valid email address';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      if (password.length < 6) {
+        _errorMessage = 'Password must be at least 6 characters long';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      final domain = _extractDomain(email);
+      if (domain != _user!.domain) {
+        _errorMessage = 'Email domain must match your organization domain';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      final accessToken = await TokenService.getValidAccessToken();
+      if (accessToken == null) {
+        _errorMessage = 'Authentication required';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      final response = await HttpService.post(
+        ApiConfig.users,
+        accessToken: accessToken,
+        body: {
           'name': name,
           'email': email,
           'password': password,
           'role': 'subDepartmentHead',
           'department_id': domain,
           'department_name': departmentName,
-        }),
+        },
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
 
         final newUser = User(
-          id: data['id'],
-          name: data['name'],
-          email: data['email'],
-          role: UserRole.values.firstWhere((r) => r.name == data['role']),
-          domain: data['department_id'],
-          departmentName: data['department_name'],
+          id: data['id'] ?? '',
+          name: data['name'] ?? name,
+          email: data['email'] ?? email,
+          role: UserRole.values.firstWhere(
+            (r) => r.name == data['role'],
+            orElse: () => UserRole.subDepartmentHead,
+          ),
+          domain: data['department_id'] ?? domain,
+          departmentName: data['department_name'] ?? departmentName,
         );
 
-        final organization = findOrganizationByDomain(domain);
-        if (organization != null) {
-          final index = _organizations.indexOf(organization);
-          _organizations[index] = Organization(
-            id: organization.id,
-            domain: organization.domain,
-            cto: organization.cto,
-            cyberSecurityHead: organization.cyberSecurityHead,
-            subDepartmentHeads: [...organization.subDepartmentHeads, newUser],
-          );
+        // Update organization data (only in debug mode)
+        if (kDebugMode) {
+          final organization = findOrganizationByDomain(domain);
+          if (organization != null) {
+            final index = _organizations.indexOf(organization);
+            _organizations[index] = Organization(
+              id: organization.id,
+              domain: organization.domain,
+              cto: organization.cto,
+              cyberSecurityHead: organization.cyberSecurityHead,
+              subDepartmentHeads: [...organization.subDepartmentHeads, newUser],
+            );
+          }
         }
 
         _isLoading = false;
         notifyListeners();
         return true;
-      } else {
-        final errorData = jsonDecode(response.body);
-        if (errorData['detail'] != null) {
-          _errorMessage = errorData['detail'];
-        } else {
-          _errorMessage = 'Failed to create user';
-        }
+      }
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      if (kDebugMode) {
+        print('Create user API error: ${e.message} (${e.statusCode})');
       }
     } catch (e) {
-      _errorMessage = 'An error occurred: $e';
+      _errorMessage = 'An error occurred while creating the user';
+      if (kDebugMode) {
+        print('Create user error: $e');
+      }
     }
 
     _isLoading = false;
@@ -509,6 +679,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Validate permissions
       if (_user?.role != UserRole.cyberSecurityHead) {
         _errorMessage =
             'Only Cybersecurity Heads can update Sub-Department Heads';
@@ -517,20 +688,27 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
-      if (_accessToken == null) {
+      final accessToken = await TokenService.getValidAccessToken();
+      if (accessToken == null) {
         _errorMessage = 'Authentication required';
         _isLoading = false;
         notifyListeners();
         return false;
       }
 
+      // Build update payload
       final updatePayload = <String, dynamic>{};
       if (name != null && name.isNotEmpty) updatePayload['name'] = name;
       if (email != null && email.isNotEmpty) {
+        if (!_isValidEmail(email)) {
+          _errorMessage = 'Please enter a valid email address';
+          _isLoading = false;
+          notifyListeners();
+          return false;
+        }
         final domain = _extractDomain(email);
         if (domain != _user!.domain) {
-          _errorMessage =
-              'Email domain must match your organization domain ($domain)';
+          _errorMessage = 'Email domain must match your organization domain';
           _isLoading = false;
           notifyListeners();
           return false;
@@ -540,7 +718,7 @@ class AuthProvider extends ChangeNotifier {
       }
       if (password != null && password.isNotEmpty && password != 'unchanged') {
         if (password.length < 6) {
-          _errorMessage = 'Password too short';
+          _errorMessage = 'Password must be at least 6 characters long';
           _isLoading = false;
           notifyListeners();
           return false;
@@ -557,55 +735,60 @@ class AuthProvider extends ChangeNotifier {
         return true; // nothing to update
       }
 
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $_accessToken',
-      };
-
-      final response = await http.patch(
-        Uri.parse('${AuthService.apiBaseUrl}/users/$userId'),
-        headers: headers,
-        body: jsonEncode(updatePayload),
+      final response = await HttpService.patch(
+        ApiConfig.buildUrlWithParams(ApiConfig.userById, {'id': userId}),
+        accessToken: accessToken,
+        body: updatePayload,
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        // Update local organization cache
-        final domain = data['department_id'];
-        final updatedUser = User(
-          id: data['id'],
-          name: data['name'],
-          email: data['email'],
-          role: UserRole.values.firstWhere((r) => r.name == data['role']),
-          domain: domain,
-          departmentName: data['department_name'],
-        );
-
-        final organization = findOrganizationByDomain(domain);
-        if (organization != null) {
-          final index = _organizations.indexOf(organization);
-          final updatedList = organization.subDepartmentHeads
-              .map((u) => u.id == userId ? updatedUser : u)
-              .toList();
-          _organizations[index] = Organization(
-            id: organization.id,
-            domain: organization.domain,
-            cto: organization.cto,
-            cyberSecurityHead: organization.cyberSecurityHead,
-            subDepartmentHeads: updatedList,
+        // Update local organization cache (only in debug mode)
+        if (kDebugMode) {
+          final domain = data['department_id'] ?? _user!.domain;
+          final updatedUser = User(
+            id: data['id'] ?? userId,
+            name: data['name'] ?? name ?? '',
+            email: data['email'] ?? email ?? '',
+            role: UserRole.values.firstWhere(
+              (r) => r.name == data['role'],
+              orElse: () => UserRole.subDepartmentHead,
+            ),
+            domain: domain,
+            departmentName: data['department_name'] ?? departmentName,
           );
+
+          final organization = findOrganizationByDomain(domain);
+          if (organization != null) {
+            final index = _organizations.indexOf(organization);
+            final updatedList = organization.subDepartmentHeads
+                .map((u) => u.id == userId ? updatedUser : u)
+                .toList();
+            _organizations[index] = Organization(
+              id: organization.id,
+              domain: organization.domain,
+              cto: organization.cto,
+              cyberSecurityHead: organization.cyberSecurityHead,
+              subDepartmentHeads: updatedList,
+            );
+          }
         }
 
         _isLoading = false;
         notifyListeners();
         return true;
-      } else {
-        final errorData = jsonDecode(response.body);
-        _errorMessage = errorData['detail'] ?? 'Failed to update user';
+      }
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      if (kDebugMode) {
+        print('Update user API error: ${e.message} (${e.statusCode})');
       }
     } catch (e) {
-      _errorMessage = 'An error occurred: $e';
+      _errorMessage = 'An error occurred while updating the user';
+      if (kDebugMode) {
+        print('Update user error: $e');
+      }
     }
 
     _isLoading = false;
@@ -619,6 +802,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Validate permissions
       if (_user?.role != UserRole.cyberSecurityHead) {
         _errorMessage =
             'Only Cybersecurity Heads can delete Sub-Department Heads';
@@ -627,53 +811,52 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
-      if (_accessToken == null) {
+      final accessToken = await TokenService.getValidAccessToken();
+      if (accessToken == null) {
         _errorMessage = 'Authentication required';
         _isLoading = false;
         notifyListeners();
         return false;
       }
 
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $_accessToken',
-      };
-
-      final response = await http.delete(
-        Uri.parse('${AuthService.apiBaseUrl}/users/$userId'),
-        headers: headers,
+      final response = await HttpService.delete(
+        ApiConfig.buildUrlWithParams(ApiConfig.userById, {'id': userId}),
+        accessToken: accessToken,
       );
 
       if (response.statusCode == 200 || response.statusCode == 204) {
-        // Remove from local organization list
-        final domain = _user!.domain;
-        final organization = findOrganizationByDomain(domain);
-        if (organization != null) {
-          final index = _organizations.indexOf(organization);
-          _organizations[index] = Organization(
-            id: organization.id,
-            domain: organization.domain,
-            cto: organization.cto,
-            cyberSecurityHead: organization.cyberSecurityHead,
-            subDepartmentHeads: organization.subDepartmentHeads
-                .where((user) => user.id != userId)
-                .toList(),
-          );
+        // Remove from local organization list (only in debug mode)
+        if (kDebugMode) {
+          final domain = _user!.domain;
+          final organization = findOrganizationByDomain(domain);
+          if (organization != null) {
+            final index = _organizations.indexOf(organization);
+            _organizations[index] = Organization(
+              id: organization.id,
+              domain: organization.domain,
+              cto: organization.cto,
+              cyberSecurityHead: organization.cyberSecurityHead,
+              subDepartmentHeads: organization.subDepartmentHeads
+                  .where((user) => user.id != userId)
+                  .toList(),
+            );
+          }
         }
 
         _isLoading = false;
         notifyListeners();
         return true;
-      } else {
-        final errorData = jsonDecode(response.body);
-        if (errorData['detail'] != null) {
-          _errorMessage = errorData['detail'];
-        } else {
-          _errorMessage = 'Failed to delete user';
-        }
+      }
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      if (kDebugMode) {
+        print('Delete user API error: ${e.message} (${e.statusCode})');
       }
     } catch (e) {
-      _errorMessage = 'An error occurred: $e';
+      _errorMessage = 'An error occurred while deleting the user';
+      if (kDebugMode) {
+        print('Delete user error: $e');
+      }
     }
 
     _isLoading = false;
@@ -690,6 +873,28 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Validate input
+      if (currentPassword.isEmpty || newPassword.isEmpty) {
+        _errorMessage = 'Please enter both current and new passwords';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      if (newPassword.length < 6) {
+        _errorMessage = 'New password must be at least 6 characters long';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      if (currentPassword == newPassword) {
+        _errorMessage = 'New password must be different from current password';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
       if (_user == null) {
         _errorMessage = 'User not found';
         _isLoading = false;
@@ -697,39 +902,34 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
-      if (_accessToken == null) {
+      final accessToken = await TokenService.getValidAccessToken();
+      if (accessToken == null) {
         _errorMessage = 'Authentication required';
         _isLoading = false;
         notifyListeners();
         return false;
       }
 
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $_accessToken',
-      };
-
-      final payload = {
-        'current_password': currentPassword,
-        'new_password': newPassword,
-      };
-
-      final response = await http.post(
-        Uri.parse('${AuthService.apiBaseUrl}/change-password'),
-        headers: headers,
-        body: jsonEncode(payload),
+      // Use the auth service method
+      await _authService.changePassword(
+        accessToken: accessToken,
+        currentPassword: currentPassword,
+        newPassword: newPassword,
       );
 
-      if (response.statusCode == 200) {
-        _isLoading = false;
-        notifyListeners();
-        return true;
-      } else {
-        final errorData = jsonDecode(response.body);
-        _errorMessage = errorData['detail'] ?? 'Failed to change password';
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      if (kDebugMode) {
+        print('Change password API error: ${e.message} (${e.statusCode})');
       }
     } catch (e) {
-      _errorMessage = 'An error occurred: $e';
+      _errorMessage = 'An error occurred while changing password';
+      if (kDebugMode) {
+        print('Change password error: $e');
+      }
     }
 
     _isLoading = false;
@@ -755,7 +955,8 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
-      if (_accessToken == null) {
+      final accessToken = await TokenService.getValidAccessToken();
+      if (accessToken == null) {
         _errorMessage = 'Authentication required';
         _isLoading = false;
         notifyListeners();
@@ -783,6 +984,12 @@ class AuthProvider extends ChangeNotifier {
       }
 
       if (email != null && email.isNotEmpty && email != _user!.email) {
+        if (!_isValidEmail(email)) {
+          _errorMessage = 'Please enter a valid email address';
+          _isLoading = false;
+          notifyListeners();
+          return false;
+        }
         final domain = _extractDomain(email);
         if (domain != _user!.domain) {
           _errorMessage = 'Email domain must match your organization domain';
@@ -799,15 +1006,10 @@ class AuthProvider extends ChangeNotifier {
         return true; // Nothing to update
       }
 
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $_accessToken',
-      };
-
-      final response = await http.patch(
-        Uri.parse('${AuthService.apiBaseUrl}/users/${_user!.id}'),
-        headers: headers,
-        body: jsonEncode(updatePayload),
+      final response = await HttpService.patch(
+        ApiConfig.buildUrlWithParams(ApiConfig.userById, {'id': _user!.id}),
+        accessToken: accessToken,
+        body: updatePayload,
       );
 
       if (response.statusCode == 200) {
@@ -815,23 +1017,41 @@ class AuthProvider extends ChangeNotifier {
 
         // Update local user data
         _user = User(
-          id: data['id'],
-          name: data['name'],
-          email: data['email'],
-          role: UserRole.values.firstWhere((r) => r.name == data['role']),
-          domain: data['department_id'],
-          departmentName: data['department_name'],
+          id: data['id'] ?? _user!.id,
+          name: data['name'] ?? name ?? _user!.name,
+          email: data['email'] ?? email ?? _user!.email,
+          role: UserRole.values.firstWhere(
+            (r) => r.name == data['role'],
+            orElse: () => _user!.role,
+          ),
+          domain: data['department_id'] ?? _user!.domain,
+          departmentName: data['department_name'] ?? _user!.departmentName,
         );
+
+        // Update stored user data
+        await TokenService.saveUserData({
+          'id': _user!.id,
+          'name': _user!.name,
+          'email': _user!.email,
+          'role': _user!.role.name,
+          'domain': _user!.domain,
+          'departmentName': _user!.departmentName,
+        });
 
         _isLoading = false;
         notifyListeners();
         return true;
-      } else {
-        final errorData = jsonDecode(response.body);
-        _errorMessage = errorData['detail'] ?? 'Failed to update profile';
+      }
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      if (kDebugMode) {
+        print('Update profile API error: ${e.message} (${e.statusCode})');
       }
     } catch (e) {
-      _errorMessage = 'An error occurred: $e';
+      _errorMessage = 'An error occurred while updating profile';
+      if (kDebugMode) {
+        print('Update profile error: $e');
+      }
     }
 
     _isLoading = false;

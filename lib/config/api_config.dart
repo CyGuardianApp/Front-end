@@ -17,11 +17,11 @@ class ApiConfig {
 
   // Production URLs (replace with your actual production domain)
   static const String _prodWebUrl =
-      'https://cyguardian.com'; // Replace with your actual domain
+      'https://cyguardian.org'; // Replace with your actual domain
   static const String _prodAndroidUrl =
-      'https://cyguardian.com'; // Replace with your actual domain
+      'https://cyguardian.org'; // Replace with your actual domain
   static const String _prodLocalUrl =
-      'https://cyguardian.com'; // Replace with your actual domain
+      'https://cyguardian.org'; // Replace with your actual domain
 
   /// Get the base API URL based on platform and environment
   static String get apiBaseUrl {

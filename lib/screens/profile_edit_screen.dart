@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../models/user.dart';
 import '../widgets/loading_indicator.dart';
 
 class ProfileEditScreen extends StatefulWidget {
@@ -481,8 +482,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         return 'Cybersecurity Head';
       case UserRole.subDepartmentHead:
         return 'Sub-Department Head';
-      default:
-        return 'User';
     }
   }
 }
