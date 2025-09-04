@@ -72,9 +72,25 @@ class _LoginScreenState extends State<LoginScreen>
   Future<void> _sendOTP() async {
     if (_formKey.currentState!.validate()) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      // Debug logging
+      if (kDebugMode) {
+        print('Sending OTP to: ${_emailController.text.toLowerCase()}');
+      }
+
       final success = await authProvider.sendOTP(
           _emailController.text.toLowerCase()); // Make email case-insensitive
+
+      // Debug logging
+      if (kDebugMode) {
+        print('OTP send result: $success');
+        print('AuthProvider error: ${authProvider.errorMessage}');
+      }
+
       if (success && mounted) {
+        if (kDebugMode) {
+          print('Setting _isOtpSent to true');
+        }
         setState(() {
           _isOtpSent = true;
         });
@@ -101,6 +117,9 @@ class _LoginScreenState extends State<LoginScreen>
         );
       } else if (mounted) {
         // Show error message if OTP sending failed
+        if (kDebugMode) {
+          print('OTP send failed, showing error message');
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(

@@ -384,11 +384,22 @@ class AuthProvider extends ChangeNotifier {
         _errorMessage = 'Please enter a valid email address';
         _isLoading = false;
         notifyListeners();
+        if (kDebugMode) {
+          print('Email validation failed: $email');
+        }
         return false;
+      }
+
+      if (kDebugMode) {
+        print('Calling OTP service for email: $email');
       }
 
       // Call the OTP service
       await _otpService.sendOTP(email, userName: email.split('@')[0]);
+
+      if (kDebugMode) {
+        print('OTP service call successful');
+      }
 
       _isLoading = false;
       notifyListeners();
