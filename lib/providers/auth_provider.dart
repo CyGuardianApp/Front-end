@@ -173,6 +173,11 @@ class AuthProvider extends ChangeNotifier {
       final data = await _authService.signIn(email, password);
 
       // Parse user data
+      print('DEBUG: Login response data: $data');
+      print('DEBUG: Role from server: ${data['role']}');
+      print(
+          'DEBUG: Available roles: ${UserRole.values.map((r) => r.name).toList()}');
+
       _user = User(
         id: data['user_id'] ?? data['id'] ?? '',
         name: data['name'] ?? email.split('@')[0],
