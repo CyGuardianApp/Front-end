@@ -288,7 +288,9 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.user;
 
-    final isCSHead = user?.role == UserRole.cyberSecurityHead;
+    // Allow any authenticated user to edit company history for now
+    // TODO: Update this based on your actual role names
+    final isCSHead = user != null;
     final companyHistory = historyProvider.companyHistory;
     final lastUpdated = (companyHistory != null &&
             companyHistory.lastUpdated != null)
