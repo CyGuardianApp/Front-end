@@ -7,7 +7,7 @@ import '../widgets/saudi_riyal_symbol.dart';
 import '../models/user.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
+  const DashboardScreen({super.key});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -78,7 +78,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.business,
                       color: Colors.white,
                       size: 24,
@@ -270,7 +270,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Icon(
+                        child: const Icon(
                           Icons.analytics,
                           color: Colors.white,
                           size: 24,
@@ -560,7 +560,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(
+                      child: const Icon(
                         Icons.people,
                         color: Colors.white,
                         size: 24,
@@ -675,7 +675,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.security,
                       color: Colors.white,
                       size: 24,

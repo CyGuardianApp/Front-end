@@ -433,7 +433,7 @@ class _AnswerQuestionnaireScreenState extends State<AnswerQuestionnaireScreen> {
                           backgroundColor: Colors.grey[300],
                           foregroundColor: Colors.black,
                         ),
-                        child: Text('Previous'),
+                        child: const Text('Previous'),
                       ),
                       if (_currentQuestionIndex ==
                           questionnaire.questions.length - 1)
@@ -443,7 +443,7 @@ class _AnswerQuestionnaireScreenState extends State<AnswerQuestionnaireScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                           ),
-                          child: Text('Submit'),
+                          child: const Text('Submit'),
                         )
                       else
                         ElevatedButton(

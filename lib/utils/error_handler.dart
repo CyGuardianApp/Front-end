@@ -137,11 +137,11 @@ class ErrorHandler {
           content: Text(message),
           actions: <Widget>[
             TextButton(
-              child: Text(buttonText ?? 'OK'),
               onPressed: onPressed ??
                   () {
                     Navigator.of(context).pop();
                   },
+              child: Text(buttonText ?? 'OK'),
             ),
           ],
         );

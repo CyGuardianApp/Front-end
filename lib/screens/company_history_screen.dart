@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/company_history_provider.dart';
-import '../models/user.dart';
 import '../models/company_history.dart';
 import '../widgets/app_drawer.dart';
 
 class CompanyHistoryScreen extends StatefulWidget {
-  const CompanyHistoryScreen({Key? key}) : super(key: key);
+  const CompanyHistoryScreen({super.key});
 
   @override
   _CompanyHistoryScreenState createState() => _CompanyHistoryScreenState();
@@ -52,7 +51,7 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
   DateTime _policyReviewDate = DateTime.now();
 
   bool _isEditing = false;
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   // Multiple entries state
   final List<Map<String, dynamic>> _incidents = [];
@@ -292,8 +291,7 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
     // TODO: Update this based on your actual role names
     final isCSHead = user != null;
     final companyHistory = historyProvider.companyHistory;
-    final lastUpdated = (companyHistory != null &&
-            companyHistory.lastUpdated != null)
+    final lastUpdated = (companyHistory != null)
         ? '${companyHistory.lastUpdated.day}/${companyHistory.lastUpdated.month}/${companyHistory.lastUpdated.year}'
         : 'Never';
 
@@ -468,8 +466,9 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
-                          if (value == null || value.isEmpty)
+                          if (value == null || value.isEmpty) {
                             return 'Please enter year';
+                          }
                           final year = int.tryParse(value);
                           if (year == null ||
                               year < 1900 ||
@@ -492,11 +491,13 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
-                          if (value == null || value.isEmpty)
+                          if (value == null || value.isEmpty) {
                             return 'Please enter count';
+                          }
                           final count = int.tryParse(value);
-                          if (count == null || count <= 0)
+                          if (count == null || count <= 0) {
                             return 'Enter valid number';
+                          }
                           return null;
                         },
                       ),
@@ -709,7 +710,7 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
                             ),
                           ),
                         );
-                      }).toList(),
+                      }),
                     ],
                   ),
               ],
@@ -783,8 +784,9 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
                       firstDate: DateTime(2000),
                       lastDate: DateTime.now(),
                     );
-                    if (date != null)
+                    if (date != null) {
                       setState(() => _toolImplementationDate = date);
+                    }
                   },
                   child: InputDecorator(
                     decoration: const InputDecoration(
@@ -888,7 +890,7 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
                             ),
                           ),
                         );
-                      }).toList(),
+                      }),
                     ],
                   ),
               ],
@@ -937,8 +939,9 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
                       firstDate: DateTime(2000),
                       lastDate: DateTime.now(),
                     );
-                    if (date != null)
+                    if (date != null) {
                       setState(() => _policyCreationDate = date);
+                    }
                   },
                   child: InputDecorator(
                     decoration: const InputDecoration(
@@ -1069,7 +1072,7 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
                             ),
                           ),
                         );
-                      }).toList(),
+                      }),
                     ],
                   ),
               ],
@@ -1134,7 +1137,7 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
               icon: const Icon(Icons.add),
               label: const Text('Add Company Information'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF2A76C9),
+                backgroundColor: const Color(0xFF2A76C9),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
@@ -1172,7 +1175,7 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                companyHistory?.companyName ?? 'Unknown Company',
+                companyHistory.companyName ?? 'Unknown Company',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -1181,17 +1184,17 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
               _buildInfoRow(
                 Icons.category,
                 'Industry',
-                companyHistory?.industry ?? 'Unknown',
+                companyHistory.industry ?? 'Unknown',
               ),
               _buildInfoRow(
                 Icons.calendar_today,
                 'Established',
-                (companyHistory?.yearEstablished ?? 'Unknown').toString(),
+                (companyHistory.yearEstablished ?? 'Unknown').toString(),
               ),
               _buildInfoRow(
                 Icons.people,
                 'Employees',
-                (companyHistory?.numberOfEmployees ?? 'Unknown').toString(),
+                (companyHistory.numberOfEmployees ?? 'Unknown').toString(),
               ),
             ],
           ),
@@ -1208,21 +1211,21 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
             children: [
               _buildSubtitle(context, 'Security History'),
               Text(
-                companyHistory?.securityHistory ??
+                companyHistory.securityHistory ??
                     'No security history available',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),
               _buildSubtitle(context, 'Current Security Measures'),
               Text(
-                companyHistory?.currentSecurity ??
+                companyHistory.currentSecurity ??
                     'No current security information available',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),
               _buildSubtitle(context, 'Network Architecture'),
               Text(
-                companyHistory?.networkArchitecture ??
+                companyHistory.networkArchitecture ??
                     'No network architecture information available',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
@@ -1232,7 +1235,7 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
         const SizedBox(height: 16),
 
         // 3. معلومات الحادث الأمني (إذا كانت متوفرة)
-        if (companyHistory?.incidentTitle?.isNotEmpty == true)
+        if (companyHistory.incidentTitle.isNotEmpty == true)
           _buildSectionCard(
             context: context,
             title: 'Security Incident',
@@ -1241,7 +1244,7 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  companyHistory?.incidentTitle ?? '',
+                  companyHistory.incidentTitle ?? '',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -1250,46 +1253,46 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
                 _buildInfoRow(
                   Icons.calendar_today,
                   'Date',
-                  companyHistory?.incidentDate != null
-                      ? '${companyHistory!.incidentDate.day}/${companyHistory.incidentDate.month}/${companyHistory.incidentDate.year}'
+                  companyHistory.incidentDate != null
+                      ? '${companyHistory.incidentDate.day}/${companyHistory.incidentDate.month}/${companyHistory.incidentDate.year}'
                       : 'Unknown',
                 ),
                 const SizedBox(height: 8),
                 _buildSubtitle(context, 'Description'),
                 Text(
-                  companyHistory?.incidentDescription ??
+                  companyHistory.incidentDescription ??
                       'No description available',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 8),
                 _buildSubtitle(context, 'Impact'),
                 Text(
-                  companyHistory?.incidentImpact ??
+                  companyHistory.incidentImpact ??
                       'No impact information available',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 8),
                 _buildSubtitle(context, 'Resolution'),
                 Text(
-                  companyHistory?.incidentResolution ??
+                  companyHistory.incidentResolution ??
                       'No resolution information available',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 8),
                 _buildSubtitle(context, 'Lessons Learned'),
                 Text(
-                  companyHistory?.incidentLessonsLearned ??
+                  companyHistory.incidentLessonsLearned ??
                       'No lessons learned information available',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
             ),
           ),
-        if (companyHistory?.incidentTitle?.isNotEmpty == true)
+        if (companyHistory.incidentTitle.isNotEmpty == true)
           const SizedBox(height: 16),
 
         // 3.b عرض قائمة الحوادث الأمنية المتعددة إن وُجدت
-        if ((companyHistory?.incidents.isNotEmpty ?? false))
+        if ((companyHistory.incidents.isNotEmpty ?? false))
           _buildSectionCard(
             context: context,
             title: 'Security Incidents',
@@ -1297,7 +1300,7 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ...companyHistory!.incidents.map((it) {
+                ...companyHistory.incidents.map((it) {
                   final String title = (it['incident_title'] ?? '').toString();
                   final String description =
                       (it['incident_description'] ?? '').toString();
@@ -1373,15 +1376,15 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
                       ),
                     ),
                   );
-                }).toList(),
+                }),
               ],
             ),
           ),
-        if ((companyHistory?.incidents.isNotEmpty ?? false))
+        if ((companyHistory.incidents.isNotEmpty ?? false))
           const SizedBox(height: 16),
 
         // 4. معلومات الأداة الأمنية (إذا كانت متوفرة)
-        if (companyHistory?.toolName?.isNotEmpty == true)
+        if (companyHistory.toolName.isNotEmpty == true)
           _buildSectionCard(
             context: context,
             title: 'Security Tool',
@@ -1390,7 +1393,7 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  companyHistory?.toolName ?? '',
+                  companyHistory.toolName ?? '',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -1399,52 +1402,52 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
                 _buildInfoRow(
                   Icons.category,
                   'Category',
-                  companyHistory?.toolCategory ?? 'Unknown',
+                  companyHistory.toolCategory ?? 'Unknown',
                 ),
                 _buildInfoRow(
                   Icons.business,
                   'Vendor',
-                  companyHistory?.toolVendor ?? 'Unknown',
+                  companyHistory.toolVendor ?? 'Unknown',
                 ),
                 _buildInfoRow(
                   Icons.numbers,
                   'Version',
-                  companyHistory?.toolVersion ?? 'Unknown',
+                  companyHistory.toolVersion ?? 'Unknown',
                 ),
                 _buildInfoRow(
                   Icons.calendar_today,
                   'Implementation Date',
-                  companyHistory?.toolImplementationDate != null
-                      ? '${companyHistory!.toolImplementationDate.day}/${companyHistory.toolImplementationDate.month}/${companyHistory.toolImplementationDate.year}'
+                  companyHistory.toolImplementationDate != null
+                      ? '${companyHistory.toolImplementationDate.day}/${companyHistory.toolImplementationDate.month}/${companyHistory.toolImplementationDate.year}'
                       : 'Unknown',
                 ),
                 _buildInfoRow(
                   Icons.check_circle,
                   'Active',
-                  companyHistory?.toolIsActive == true ? 'Yes' : 'No',
+                  companyHistory.toolIsActive == true ? 'Yes' : 'No',
                 ),
                 const SizedBox(height: 8),
                 _buildSubtitle(context, 'Purpose'),
                 Text(
-                  companyHistory?.toolPurpose ??
+                  companyHistory.toolPurpose ??
                       'No purpose information available',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 8),
                 _buildSubtitle(context, 'Coverage'),
                 Text(
-                  companyHistory?.toolCoverage ??
+                  companyHistory.toolCoverage ??
                       'No coverage information available',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
             ),
           ),
-        if (companyHistory?.toolName?.isNotEmpty == true)
+        if (companyHistory.toolName.isNotEmpty == true)
           const SizedBox(height: 16),
 
         // 4.b عرض قائمة الأدوات الأمنية المتعددة إن وُجدت
-        if ((companyHistory?.tools.isNotEmpty ?? false))
+        if ((companyHistory.tools.isNotEmpty ?? false))
           _buildSectionCard(
             context: context,
             title: 'Security Tools',
@@ -1452,7 +1455,7 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ...companyHistory!.tools.map((it) {
+                ...companyHistory.tools.map((it) {
                   final String name = (it['tool_name'] ?? '').toString();
                   final String category =
                       (it['tool_category'] ?? '').toString();
@@ -1536,15 +1539,15 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
                       ),
                     ),
                   );
-                }).toList(),
+                }),
               ],
             ),
           ),
-        if ((companyHistory?.tools.isNotEmpty ?? false))
+        if ((companyHistory.tools.isNotEmpty ?? false))
           const SizedBox(height: 16),
 
         // 5. معلومات وثيقة السياسة (إذا كانت متوفرة)
-        if (companyHistory?.policyTitle?.isNotEmpty == true)
+        if (companyHistory.policyTitle.isNotEmpty == true)
           _buildSectionCard(
             context: context,
             title: 'Policy Document',
@@ -1553,7 +1556,7 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  companyHistory?.policyTitle ?? '',
+                  companyHistory.policyTitle ?? '',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -1562,48 +1565,48 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
                 _buildInfoRow(
                   Icons.calendar_today,
                   'Creation Date',
-                  companyHistory?.policyCreationDate != null
-                      ? '${companyHistory!.policyCreationDate.day}/${companyHistory.policyCreationDate.month}/${companyHistory.policyCreationDate.year}'
+                  companyHistory.policyCreationDate != null
+                      ? '${companyHistory.policyCreationDate.day}/${companyHistory.policyCreationDate.month}/${companyHistory.policyCreationDate.year}'
                       : 'Unknown',
                 ),
                 _buildInfoRow(
                   Icons.calendar_today,
                   'Last Review Date',
-                  companyHistory?.policyLastReviewDate != null
-                      ? '${companyHistory!.policyLastReviewDate.day}/${companyHistory.policyLastReviewDate.month}/${companyHistory.policyLastReviewDate.year}'
+                  companyHistory.policyLastReviewDate != null
+                      ? '${companyHistory.policyLastReviewDate.day}/${companyHistory.policyLastReviewDate.month}/${companyHistory.policyLastReviewDate.year}'
                       : 'Unknown',
                 ),
-                if (companyHistory?.policyDocumentUrl?.isNotEmpty == true)
+                if (companyHistory.policyDocumentUrl.isNotEmpty == true)
                   _buildInfoRow(
                     Icons.link,
                     'Document URL',
-                    companyHistory?.policyDocumentUrl ?? 'No URL available',
+                    companyHistory.policyDocumentUrl ?? 'No URL available',
                   ),
                 _buildInfoRow(
                   Icons.domain,
                   'Scope',
-                  companyHistory?.policyScope ?? 'Unknown',
+                  companyHistory.policyScope ?? 'Unknown',
                 ),
                 _buildInfoRow(
                   Icons.person,
                   'Owner',
-                  companyHistory?.policyOwner ?? 'Unknown',
+                  companyHistory.policyOwner ?? 'Unknown',
                 ),
                 const SizedBox(height: 8),
                 _buildSubtitle(context, 'Description'),
                 Text(
-                  companyHistory?.policyDescription ??
+                  companyHistory.policyDescription ??
                       'No description available',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
             ),
           ),
-        if (companyHistory?.policyTitle?.isNotEmpty == true)
+        if (companyHistory.policyTitle.isNotEmpty == true)
           const SizedBox(height: 16),
 
         // 5.b عرض قائمة وثائق السياسات المتعددة إن وُجدت
-        if ((companyHistory?.policies.isNotEmpty ?? false))
+        if ((companyHistory.policies.isNotEmpty ?? false))
           _buildSectionCard(
             context: context,
             title: 'Policy Documents',
@@ -1611,7 +1614,7 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ...companyHistory!.policies.map((it) {
+                ...companyHistory.policies.map((it) {
                   final String title = (it['policy_title'] ?? '').toString();
                   final String description =
                       (it['policy_description'] ?? '').toString();
@@ -1695,11 +1698,11 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
                       ),
                     ),
                   );
-                }).toList(),
+                }),
               ],
             ),
           ),
-        if ((companyHistory?.policies.isNotEmpty ?? false))
+        if ((companyHistory.policies.isNotEmpty ?? false))
           const SizedBox(height: 16),
 
         // بطاقة معلومات التحليل

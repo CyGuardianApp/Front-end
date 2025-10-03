@@ -88,9 +88,7 @@ class TokenService {
     try {
       final refreshToken = await getRefreshToken();
       if (refreshToken == null) {
-        if (kDebugMode) {
-          print('No refresh token available');
-        }
+        // Don't print debug message - this is normal for OTP auth
         return null;
       }
 

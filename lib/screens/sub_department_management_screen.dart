@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 
 class SubDepartmentManagementScreen extends StatefulWidget {
-  const SubDepartmentManagementScreen({Key? key}) : super(key: key);
+  const SubDepartmentManagementScreen({super.key});
 
   @override
   State<SubDepartmentManagementScreen> createState() =>

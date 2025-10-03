@@ -9,7 +9,7 @@ import 'answer_questionnaire_screen.dart';
 import 'response_detail_screen.dart';
 
 class QuestionnaireListScreen extends StatefulWidget {
-  const QuestionnaireListScreen({Key? key}) : super(key: key);
+  const QuestionnaireListScreen({super.key});
 
   // Static method to refresh questionnaire list from other screens
   static void refreshQuestionnaireList(BuildContext context) {
@@ -75,8 +75,8 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
 
     if (user == null) {
       return Scaffold(
-        appBar: AppBar(title: Text('Questionnaires')),
-        body: Center(child: Text('Please log in to view questionnaires')),
+        appBar: AppBar(title: const Text('Questionnaires')),
+        body: const Center(child: Text('Please log in to view questionnaires')),
       );
     }
 
@@ -86,13 +86,13 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
     return Scaffold(
       key: ValueKey(_refreshKey),
       appBar: AppBar(
-        title: Text('Questionnaires'),
+        title: const Text('Questionnaires'),
         bottom: TabBar(
           controller: _tabController,
           tabs: [
             Tab(text: isCSHead ? 'All' : 'Pending'),
-            Tab(text: 'Completed'),
-            Tab(text: 'Drafts'),
+            const Tab(text: 'Completed'),
+            const Tab(text: 'Drafts'),
           ],
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white.withOpacity(0.7),
@@ -100,7 +100,7 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh),
             onPressed: () async {
               final questionnaireProvider =
                   Provider.of<QuestionnaireProvider>(context, listen: false);
@@ -108,19 +108,19 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
               await questionnaireProvider.fetchAllResponses(context);
               _forceRefresh();
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Questionnaires refreshed!')),
+                const SnackBar(content: Text('Questionnaires refreshed!')),
               );
             },
             tooltip: 'Refresh',
           ),
           if (isCSHead)
             IconButton(
-              icon: Icon(Icons.add),
+              icon: const Icon(Icons.add),
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => CreateQuestionnaireScreen(),
+                    builder: (context) => const CreateQuestionnaireScreen(),
                   ),
                 );
               },
@@ -184,12 +184,12 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => CreateQuestionnaireScreen(),
+                    builder: (context) => const CreateQuestionnaireScreen(),
                   ),
                 );
               },
-              child: Icon(Icons.add),
               tooltip: 'Create New Questionnaire',
+              child: const Icon(Icons.add),
             )
           : null,
     );
@@ -237,12 +237,12 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.assignment_outlined,
               size: 64,
               color: Colors.grey,
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               status == QuestionnaireStatus.published
                   ? 'No pending questionnaires'
@@ -254,19 +254,19 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
                 color: Colors.grey[600],
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             if (isCSHead)
               ElevatedButton.icon(
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => CreateQuestionnaireScreen(),
+                      builder: (context) => const CreateQuestionnaireScreen(),
                     ),
                   );
                 },
-                icon: Icon(Icons.add),
-                label: Text('Create New Questionnaire'),
+                icon: const Icon(Icons.add),
+                label: const Text('Create New Questionnaire'),
               ),
           ],
         ),
@@ -281,7 +281,7 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
         await questionnaireProvider.fetchAllResponses(context);
       },
       child: ListView.builder(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         itemCount: questionnaires.length,
         itemBuilder: (context, index) {
           final questionnaire = questionnaires[index];
@@ -327,12 +327,12 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.drafts,
               size: 64,
               color: Colors.grey,
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               isCSHead ? 'No draft questionnaires' : 'No saved draft responses',
               style: TextStyle(
@@ -353,7 +353,7 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
         await questionnaireProvider.fetchAllResponses(context);
       },
       child: ListView.builder(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         itemCount: questionnaires.length,
         itemBuilder: (context, index) {
           final questionnaire = questionnaires[index];
@@ -400,7 +400,7 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
     }
 
     return Card(
-      margin: EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: () {
@@ -460,7 +460,8 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
                     ),
                   ),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: statusColor.withAlpha((0.1 * 255).toInt()),
                       borderRadius: BorderRadius.circular(20),
@@ -566,12 +567,14 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
                             ),
                           );
                         },
-                        child: isDraft ? Text('Continue') : Text('Answer'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: isDraft
                               ? Colors.amber
                               : Theme.of(context).primaryColor,
                         ),
+                        child: isDraft
+                            ? const Text('Continue')
+                            : const Text('Answer'),
                       ),
                     ],
                   ),

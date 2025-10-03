@@ -4,7 +4,7 @@ import '../models/company_history.dart';
 
 class RiskAssessmentProvider extends ChangeNotifier {
   final AIService _aiService;
-  List<Map<String, dynamic>> _questionnaires = [];
+  final List<Map<String, dynamic>> _questionnaires = [];
   CompanyHistory? _companyHistory;
   Map<String, dynamic>? _aiReport;
   bool _isLoading = false;

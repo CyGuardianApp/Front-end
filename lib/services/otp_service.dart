@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import '../config/api_config.dart';
+import 'token_service.dart';
 
 class OTPService {
   static String get baseUrl => ApiConfig.apiBaseUrl;
@@ -49,7 +50,21 @@ class OTPService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final result = jsonDecode(response.body);
+        
+        // If OTP verification returns a token, save it
+        if (result['access_token'] != null) {
+          await TokenService.saveTokens(
+            accessToken: result['access_token'],
+            refreshToken: result['refresh_token'],
+          );
+          
+          if (kDebugMode) {
+            print('JWT token saved after OTP verification');
+          }
+        }
+        
+        return result;
       } else {
         final errorBody = jsonDecode(response.body);
         throw Exception(errorBody['detail'] ?? 'Failed to verify OTP');

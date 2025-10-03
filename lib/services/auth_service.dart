@@ -35,23 +35,28 @@ class AuthService {
   }
 
   /// Sign up a new user
-  Future<Map<String, dynamic>> signUp(String email, String password, UserRole role, {
+  Future<Map<String, dynamic>> signUp(
+    String email,
+    String password,
+    UserRole role, {
     String? name,
     String? departmentName,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse(ApiConfig.buildUrl(ApiConfig.users)),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'name': name ?? email.split('@')[0],
-          'email': email,
-          'password': password,
-          'role': role.name,
-          'department_id': email.split('@').last,
-          'department_name': departmentName,
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse(ApiConfig.buildUrl(ApiConfig.register)),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'name': name ?? email.split('@')[0],
+              'email': email,
+              'password': password,
+              'role': role.name,
+              'department_id': email.split('@').last,
+              'department_name': departmentName,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return jsonDecode(response.body);
@@ -108,17 +113,19 @@ class AuthService {
     required String newPassword,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse(ApiConfig.buildUrl(ApiConfig.changePassword)),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
-        },
-        body: jsonEncode({
-          'current_password': currentPassword,
-          'new_password': newPassword,
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse(ApiConfig.buildUrl(ApiConfig.changePassword)),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $accessToken',
+            },
+            body: jsonEncode({
+              'current_password': currentPassword,
+              'new_password': newPassword,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode != 200) {
         final errorBody = jsonDecode(response.body);
@@ -135,9 +142,11 @@ class AuthService {
   /// Check if the service is healthy
   Future<bool> isHealthy() async {
     try {
-      final response = await http.get(
-        Uri.parse(ApiConfig.buildUrl(ApiConfig.healthAuth)),
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse(ApiConfig.buildUrl(ApiConfig.healthAuth)),
+          )
+          .timeout(const Duration(seconds: 10));
       return response.statusCode == 200;
     } catch (e) {
       if (kDebugMode) {

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -452,7 +451,29 @@ class AuthProvider extends ChangeNotifier {
       final response = await _otpService.verifyOTP(email, otp);
       bool isValid = response['verified'] == true;
 
-      if (!isValid) {
+      if (isValid) {
+        // Update user information if provided in response
+        if (response['name'] != null) {
+          _user = User(
+            id: response['id'] ?? 'unknown',
+            name: response['name'],
+            email: email,
+            role: UserRole.values.firstWhere(
+              (role) => role.name.toLowerCase() == (response['role']?.toLowerCase() ?? 'user'),
+              orElse: () => UserRole.subDepartmentHead,
+            ),
+            domain: _extractDomain(email),
+            departmentName: response['department_name'],
+          );
+          
+          // Set authentication state
+          _isAuthenticated = true;
+        }
+        
+        if (kDebugMode) {
+          print('OTP verified successfully');
+        }
+      } else {
         _errorMessage = 'Invalid OTP. Please try again.';
       }
 

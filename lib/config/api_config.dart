@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class ApiConfig {
   // Environment configuration
   static const bool _isProduction =
-      true; // Changed to false for local development
+      false; // Changed to false for local development
 
   // Development URLs (localhost)
   static const String _devWebUrl = 'http://127.0.0.1:8000';
@@ -64,6 +64,7 @@ class ApiConfig {
   // User Management
   static const String users = '/users/';
   static const String userById = '/users/{id}';
+  static const String register = '/users/register';
 
   // OTP Service
   static const String generateOtp = '/otp/generate-otp';
@@ -94,6 +95,10 @@ class ApiConfig {
 
   /// Helper method to build full URLs
   static String buildUrl(String endpoint) {
+    // Check if endpoint already contains a base (http/https)
+    if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+      return endpoint; // Return as-is if already a complete URL
+    }
     return '$apiBaseUrl$endpoint';
   }
 
@@ -104,6 +109,12 @@ class ApiConfig {
     params.forEach((key, value) {
       url = url.replaceAll('{$key}', value);
     });
+
+    // Check if url already contains a base (http/https)
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url; // Return as-is if already a complete URL
+    }
+
     return '$apiBaseUrl$url';
   }
 
