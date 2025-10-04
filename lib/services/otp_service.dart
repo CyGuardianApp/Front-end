@@ -54,9 +54,11 @@ class OTPService {
         
         // If OTP verification returns a token, save it
         if (result['access_token'] != null) {
+          final expiryTime = DateTime.now().add(const Duration(hours: 24));
           await TokenService.saveTokens(
             accessToken: result['access_token'],
             refreshToken: result['refresh_token'],
+            expiry: expiryTime,
           );
           
           if (kDebugMode) {

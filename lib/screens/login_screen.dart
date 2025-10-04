@@ -327,40 +327,32 @@ class _LoginScreenState extends State<LoginScreen>
         return;
       }
 
-      // Then login
-      final success = await authProvider.login(
-        _emailController.text.toLowerCase(), // Make email case-insensitive
-        _passwordController.text,
-      );
-
-      if (success && mounted) {
-        // Check if user needs to change password
+      // OTP verification successful - user is already authenticated!
+      // No need to call login() again - verifyOTP already sets _isAuthenticated = true
+      if (mounted) {
         Navigator.pushReplacementNamed(context, '/dashboard');
-      } else if (mounted) {
-        // Show login error
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    authProvider.errorMessage ??
-                        'Login failed. Please try again.',
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            duration: const Duration(seconds: 5),
-          ),
-        );
       }
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text('Successfully authenticated!'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
