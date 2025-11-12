@@ -336,10 +336,10 @@ class _LoginScreenState extends State<LoginScreen>
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Row(
+          content: const Row(
             children: [
-              const Icon(Icons.check_circle, color: Colors.white),
-              const SizedBox(width: 12),
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
               Expanded(
                 child: Text('Successfully authenticated!'),
               ),

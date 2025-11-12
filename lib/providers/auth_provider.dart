@@ -459,7 +459,7 @@ class AuthProvider extends ChangeNotifier {
           if (accessToken != null) {
             // Save the access token for future use
             _accessToken = accessToken;
-            
+
             // Also ensure it's saved via TokenService (in case OTP service didn't save it properly)
             // Calculate expiry time (JWT tokens typically expire in 24 hours)
             final expiryTime = DateTime.now().add(const Duration(hours: 24));
@@ -468,40 +468,71 @@ class AuthProvider extends ChangeNotifier {
               refreshToken: response['refresh_token'],
               expiry: expiryTime,
             );
-            
-            // Call the auth service to get current user info (includes correct role)
-            final userData = await _authService.getCurrentUser(accessToken);
-            
-            _user = User(
-              id: userData['id'] ?? response['id'] ?? 'unknown',
-              name: userData['name'] ?? response['name'] ?? email.split('@')[0],
-              email: userData['email'] ?? email,
-              role: UserRole.values.firstWhere(
-                (role) => role.name.toLowerCase() == (userData['role']?.toLowerCase() ?? 'user'),
-                orElse: () => UserRole.cyberSecurityHead, // Better default
-              ),
-              domain: userData['department_id'] ?? _extractDomain(email),
-              departmentName: userData['department_name'],
-            );
+
+            // Try to get current user info (only if user exists)
+            // During registration, user might not exist yet, so this call may fail
+            try {
+              final userData = await _authService.getCurrentUser(accessToken);
+
+              _user = User(
+                id: userData['id'] ?? response['id'] ?? 'unknown',
+                name:
+                    userData['name'] ?? response['name'] ?? email.split('@')[0],
+                email: userData['email'] ?? email,
+                role: UserRole.values.firstWhere(
+                  (role) =>
+                      role.name.toLowerCase() ==
+                      (userData['role']?.toLowerCase() ?? 'user'),
+                  orElse: () => UserRole.cyberSecurityHead, // Better default
+                ),
+                domain: userData['department_id'] ?? _extractDomain(email),
+                departmentName: userData['department_name'],
+              );
+            } catch (e) {
+              // User doesn't exist yet (during registration flow)
+              // This is expected - user will be created during registration
+              // Use response data as fallback
+              if (kDebugMode) {
+                print(
+                    'User not found in database yet (registration in progress): $e');
+              }
+
+              _user = User(
+                id: response['id'] ?? 'unknown',
+                name: response['name'] ?? email.split('@')[0],
+                email: email,
+                role: UserRole.values.firstWhere(
+                  (role) =>
+                      role.name.toLowerCase() ==
+                      (response['role']?.toLowerCase() ?? 'user'),
+                  orElse: () => UserRole.cyberSecurityHead, // Better default
+                ),
+                domain: _extractDomain(email),
+                departmentName: response['department_name'],
+              );
+            }
           } else {
             // Fallback to OTP response data - still save token if available
             final fallbackToken = response['access_token'];
             if (fallbackToken != null) {
               _accessToken = fallbackToken;
-              final fallbackExpiry = DateTime.now().add(const Duration(hours: 24));
+              final fallbackExpiry =
+                  DateTime.now().add(const Duration(hours: 24));
               await TokenService.saveTokens(
                 accessToken: fallbackToken,
                 refreshToken: response['refresh_token'],
                 expiry: fallbackExpiry,
               );
             }
-            
+
             _user = User(
               id: response['id'] ?? 'unknown',
               name: response['name'] ?? email.split('@')[0],
               email: email,
               role: UserRole.values.firstWhere(
-                (role) => role.name.toLowerCase() == (response['role']?.toLowerCase() ?? 'user'),
+                (role) =>
+                    role.name.toLowerCase() ==
+                    (response['role']?.toLowerCase() ?? 'user'),
                 orElse: () => UserRole.cyberSecurityHead, // Better default
               ),
               domain: _extractDomain(email),
@@ -512,7 +543,7 @@ class AuthProvider extends ChangeNotifier {
           if (kDebugMode) {
             print('Error fetching user data after OTP: $e');
           }
-          
+
           // Still try to save token even in error case
           final errorToken = response['access_token'];
           if (errorToken != null) {
@@ -524,7 +555,7 @@ class AuthProvider extends ChangeNotifier {
               expiry: errorExpiry,
             );
           }
-          
+
           // Final fallback
           _user = User(
             id: response['id'] ?? 'unknown',
@@ -535,16 +566,16 @@ class AuthProvider extends ChangeNotifier {
             departmentName: response['department_name'],
           );
         }
-        
+
         // Set authentication state
         _isAuthenticated = true;
-        
+
         if (kDebugMode) {
           print('OTP verification completed');
           print('User authenticated: $_isAuthenticated');
           print('Access token available: ${_accessToken != null}');
           print('User role: ${_user?.role.name}');
-          
+
           // Test token retrieval
           final savedToken = await TokenService.getValidAccessToken();
           print('TokenService.getValidAccessToken(): ${savedToken != null}');
@@ -613,14 +644,14 @@ class AuthProvider extends ChangeNotifier {
       if (kDebugMode) {
         print('fetchSubDepartmentHeadsByDomain called for domain: $domain');
       }
-      
+
       final accessToken = await TokenService.getValidAccessToken();
       if (accessToken == null) {
         if (kDebugMode) {
           print('No valid access token available for fetching users');
           print('AuthProvider._accessToken: ${_accessToken != null}');
           print('AuthProvider._isAuthenticated: $_isAuthenticated');
-          
+
           // Debug token service directly
           final rawToken = await TokenService.getAccessToken();
           print('TokenService.getAccessToken(): ${rawToken != null}');
