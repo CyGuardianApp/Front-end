@@ -45,6 +45,7 @@ class HttpService {
     String? accessToken,
     dynamic body,
     Map<String, String>? queryParams,
+    Duration? timeout, // Custom timeout for long-running requests (e.g., AI)
   }) async {
     return _makeRequest(
       'POST',
@@ -53,6 +54,7 @@ class HttpService {
       accessToken: accessToken,
       body: body,
       queryParams: queryParams,
+      timeout: timeout,
     );
   }
 
@@ -116,6 +118,7 @@ class HttpService {
     String? accessToken,
     dynamic body,
     Map<String, String>? queryParams,
+    Duration? timeout, // Custom timeout for long-running requests
   }) async {
     // Build URL
     String url = ApiConfig.buildUrl(endpoint);
@@ -157,34 +160,35 @@ class HttpService {
           print('HTTP $method $url (Attempt ${attempt + 1}/$_maxRetries)');
         }
 
+        final requestTimeout = timeout ?? _timeout;
         http.Response response;
         switch (method.toUpperCase()) {
           case 'GET':
             response = await http
                 .get(Uri.parse(url), headers: requestHeaders)
-                .timeout(_timeout);
+                .timeout(requestTimeout);
             break;
           case 'POST':
             response = await http
                 .post(Uri.parse(url),
                     headers: requestHeaders, body: requestBody)
-                .timeout(_timeout);
+                .timeout(requestTimeout);
             break;
           case 'PUT':
             response = await http
                 .put(Uri.parse(url), headers: requestHeaders, body: requestBody)
-                .timeout(_timeout);
+                .timeout(requestTimeout);
             break;
           case 'PATCH':
             response = await http
                 .patch(Uri.parse(url),
                     headers: requestHeaders, body: requestBody)
-                .timeout(_timeout);
+                .timeout(requestTimeout);
             break;
           case 'DELETE':
             response = await http
                 .delete(Uri.parse(url), headers: requestHeaders)
-                .timeout(_timeout);
+                .timeout(requestTimeout);
             break;
           default:
             throw ApiException('Unsupported HTTP method: $method');

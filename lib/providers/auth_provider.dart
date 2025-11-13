@@ -53,47 +53,7 @@ class AuthProvider extends ChangeNotifier {
 
   final List<Organization> _organizations = [];
 
-  // Test data only available in debug mode
-  final List<User> _testUsers = kDebugMode
-      ? [
-          User(
-            id: '1',
-            name: 'CTO User',
-            email: 'cto@example.com',
-            role: UserRole.cto,
-            domain: 'example.com',
-          ),
-          User(
-            id: '2',
-            name: 'Cybersecurity Head',
-            email: 'cs@example.com',
-            role: UserRole.cyberSecurityHead,
-            domain: 'example.com',
-          ),
-          User(
-            id: '3',
-            name: 'Sub-Department Head',
-            email: 'sub@example.com',
-            role: UserRole.subDepartmentHead,
-            domain: 'example.com',
-          ),
-        ]
-      : [];
-
-  AuthProvider(this._authService, this._otpService) {
-    // Only add test organization in debug mode
-    if (kDebugMode && _testUsers.isNotEmpty) {
-      _organizations.add(
-        Organization(
-          id: '1',
-          domain: 'example.com',
-          cto: _testUsers[0],
-          cyberSecurityHead: _testUsers[1],
-          subDepartmentHeads: [_testUsers[2]],
-        ),
-      );
-    }
-  }
+  AuthProvider(this._authService, this._otpService);
 
   User? get user => _user;
   bool get isAuthenticated => _isAuthenticated;
@@ -128,21 +88,6 @@ class AuthProvider extends ChangeNotifier {
       );
     } catch (e) {
       debugPrint('Failed to fetch organization: $e');
-      return null;
-    }
-  }
-
-  User? _findUserByEmail(String email) {
-    for (var org in _organizations) {
-      if (org.cto?.email == email) return org.cto;
-      if (org.cyberSecurityHead?.email == email) return org.cyberSecurityHead;
-      for (var user in org.subDepartmentHeads) {
-        if (user.email == email) return user;
-      }
-    }
-    try {
-      return _testUsers.firstWhere((user) => user.email == email);
-    } catch (e) {
       return null;
     }
   }
@@ -274,17 +219,6 @@ class AuthProvider extends ChangeNotifier {
         _isLoading = false;
         notifyListeners();
         return false;
-      }
-
-      // Check if user already exists (only in debug mode with test data)
-      if (kDebugMode) {
-        final existingUser = _findUserByEmail(email);
-        if (existingUser != null) {
-          _errorMessage = 'A user with this email already exists';
-          _isLoading = false;
-          notifyListeners();
-          return false;
-        }
       }
 
       // Call the auth service to register
@@ -592,11 +526,17 @@ class AuthProvider extends ChangeNotifier {
       if (kDebugMode) {
         print('Verify OTP API error: ${e.message} (${e.statusCode})');
       }
+    } on Exception catch (e) {
+      // Show the actual exception message
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      if (kDebugMode) {
+        print('Verify OTP exception: $e');
+      }
     } catch (e) {
-      _errorMessage =
-          'Failed to verify OTP. Please check your internet connection.';
+      _errorMessage = 'Failed to verify OTP: ${e.toString()}';
       if (kDebugMode) {
         print('Verify OTP error: $e');
+        print('Error type: ${e.runtimeType}');
       }
     }
 

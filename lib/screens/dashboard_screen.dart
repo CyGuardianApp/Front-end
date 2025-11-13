@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../constants/app_colors.dart';
 import '../providers/auth_provider.dart';
 import '../providers/risk_assessment_provider.dart';
+import '../providers/questionnaire_provider.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/saudi_riyal_symbol.dart';
 import '../models/user.dart';
+import '../models/questionnaire.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -18,12 +21,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     // Load AI report if not already loaded
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final riskProvider =
           Provider.of<RiskAssessmentProvider>(context, listen: false);
-      if (riskProvider.aiReport == null) {
-        riskProvider.generateAIReport();
+      final questionnaireProvider =
+          Provider.of<QuestionnaireProvider>(context, listen: false);
+
+      // First, ensure questionnaire responses are loaded
+      if (questionnaireProvider.responses.isEmpty) {
+        await questionnaireProvider.fetchAllResponses(context);
       }
+
+      // Only load APPROVED risk assessments for dashboard
+      await riskProvider.loadLatestRiskAssessment(questionnaireProvider);
     });
   }
 
@@ -120,7 +130,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Icons.person,
                   'CTO',
                   organization.cto!.name,
-                  Colors.blue,
+                  AppColors.blue,
                 ),
                 const SizedBox(height: 12),
               ],
@@ -134,7 +144,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Icons.security,
                   'Cybersecurity Head',
                   organization.cyberSecurityHead!.name,
-                  Colors.green,
+                  AppColors.green,
                 ),
                 const SizedBox(height: 12),
               ],
@@ -147,7 +157,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Icons.apartment,
                   'Department',
                   currentUser.departmentName!,
-                  Colors.blueGrey,
+                  AppColors.blueGrey,
                 ),
                 const SizedBox(height: 12),
               ],
@@ -158,7 +168,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Icons.people,
                 'Sub-Departments',
                 '${organization.subDepartmentHeads.length}',
-                Colors.orange,
+                AppColors.orange,
               ),
             ],
           ),
@@ -172,7 +182,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.7),
+        color: AppColors.white.withOpacity(0.7),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: color.withOpacity(0.2),
@@ -197,7 +207,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text(
                   label,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey[600],
                         fontWeight: FontWeight.w500,
                       ),
                 ),
@@ -220,14 +229,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final riskScore = aiReport?['riskScore'] ?? 0;
     final riskLevel = aiReport?['riskLevel'] ?? 'Unknown';
 
-    Color riskColor;
-    if (riskScore < 30) {
-      riskColor = Colors.green;
-    } else if (riskScore < 70) {
-      riskColor = Colors.orange;
-    } else {
-      riskColor = Colors.red;
-    }
+    final riskColor = AppColors.getRiskColor(riskScore);
 
     return Container(
       decoration: BoxDecoration(
@@ -272,7 +274,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         child: const Icon(
                           Icons.analytics,
-                          color: Colors.white,
+                          color: AppColors.white,
                           size: 24,
                         ),
                       ),
@@ -312,11 +314,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 height: 24,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: Colors.grey[200],
+                  color: AppColors.grey200,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: AppColors.black.withOpacity(0.1),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -353,9 +355,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Text(
                     '0',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
-                        ),
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   Text(
                     riskScore.toString(),
@@ -366,9 +366,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   Text(
                     '100',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
-                        ),
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
               ),
@@ -395,7 +393,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Icons.report_problem,
             'Total Findings',
             totalFindings.toString(),
-            Colors.orange,
+            AppColors.orange,
             'Security issues found',
           ),
         ),
@@ -406,7 +404,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Icons.warning,
             'High Severity',
             highSeverityCount.toString(),
-            Colors.red,
+            AppColors.red,
             'Critical issues',
           ),
         ),
@@ -416,8 +414,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             context,
             Icons.attach_money,
             'Est. Cost',
-            totalCost.toString(),
-            Colors.green,
+            (totalCost as num).toStringAsFixed(0),
+            AppColors.green,
             'Remediation cost',
             useSaudiRiyal: true,
           ),
@@ -484,10 +482,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         Text(
                           subtitle,
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Colors.grey[600],
-                                  ),
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
                     ),
@@ -582,12 +577,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           Text(
                             'Create and manage accounts for sub-department heads',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  color: Colors.grey[600],
-                                ),
+                            style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ],
                       ),
@@ -629,6 +619,166 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildGenerateReportButton(
+      BuildContext context,
+      RiskAssessmentProvider riskProvider,
+      QuestionnaireProvider questionnaireProvider) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Theme.of(context).primaryColor.withOpacity(0.1),
+            Theme.of(context).primaryColor.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).primaryColor.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).primaryColor,
+                      Theme.of(context).primaryColor.withOpacity(0.8),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.analytics,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Generate AI Risk Assessment',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    Text(
+                      'Create a new risk assessment from your latest questionnaire response',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Consumer<RiskAssessmentProvider>(
+            builder: (context, provider, _) {
+              // Get latest questionnaire response
+              final latestResponse = questionnaireProvider.responses.isNotEmpty
+                  ? (() {
+                      final sorted = List<QuestionnaireResponse>.from(
+                          questionnaireProvider.responses);
+                      sorted.sort(
+                          (a, b) => b.submittedAt.compareTo(a.submittedAt));
+                      return sorted.first;
+                    })()
+                  : null;
+
+              if (latestResponse == null) {
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.orange),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'No questionnaire responses found. Please submit a questionnaire first.',
+                          style: TextStyle(color: Colors.orange[700]),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final questionnaire = questionnaireProvider
+                  .getQuestionnaireById(latestResponse.questionnaireId);
+
+              return ElevatedButton.icon(
+                onPressed: provider.isLoading
+                    ? null
+                    : () async {
+                        await provider.generateAIReportFromResponse(
+                          latestResponse.id,
+                          departmentId: questionnaire?.departmentId,
+                        );
+
+                        if (provider.errorMessage != null && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(provider.errorMessage!),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        } else if (provider.aiReport != null &&
+                            context.mounted) {
+                          Navigator.pushNamed(context, '/ai-report');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'Risk assessment generated! Please review and approve it.'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      },
+                icon: provider.isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.analytics),
+                label: Text(provider.isLoading
+                    ? 'Generating...'
+                    : 'Generate Risk Assessment'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -705,10 +855,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         const SizedBox(height: 16),
                         Text(
                           'No findings available',
-                          style:
-                              Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                    color: Colors.grey[600],
-                                  ),
+                          style: Theme.of(context).textTheme.bodyLarge,
                         ),
                       ],
                     ),
@@ -779,8 +926,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ),
                             DataCell(SaudiRiyalSymbol(
-                              amount:
-                                  '${findings[index]['estimatedCost'] ?? 0}',
+                              amount: (findings[index]['estimatedCost'] as num?)
+                                      ?.toStringAsFixed(0) ??
+                                  '0',
                               size: 16,
                             )),
                           ],
@@ -810,7 +958,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       label: const Text(
                         'View All Findings',
                         style: TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.w600),
+                            color: AppColors.white,
+                            fontWeight: FontWeight.w600),
                       ),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
@@ -835,10 +984,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Dashboard',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: const Text('Dashboard'),
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 8),
@@ -849,7 +995,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: IconButton(
               icon: const Icon(Icons.refresh),
               onPressed: () {
-                riskProvider.generateAIReport();
+                final questionnaireProvider =
+                    Provider.of<QuestionnaireProvider>(context, listen: false);
+                riskProvider.loadLatestRiskAssessment(questionnaireProvider);
               },
             ),
           ),
@@ -869,24 +1017,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 16),
                   Text(
                     'Loading dashboard...',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Colors.grey[600],
-                        ),
+                    style: Theme.of(context).textTheme.bodyLarge,
                   ),
                 ],
               ),
             )
           : Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.grey[50]!,
-                    Colors.white,
-                  ],
-                ),
-              ),
+              color: Theme.of(context).scaffoldBackgroundColor,
               child: SingleChildScrollView(
                 child: Padding(
                   padding: const EdgeInsets.all(20.0),
@@ -917,12 +1054,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           children: [
                             Text(
                               'Welcome back,',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyLarge
-                                  ?.copyWith(
-                                    color: Colors.grey[600],
-                                  ),
+                              style: Theme.of(context).textTheme.bodyLarge,
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -938,12 +1070,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             const SizedBox(height: 8),
                             Text(
                               'Here\'s your cybersecurity overview',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: Colors.grey[600],
-                                  ),
+                              style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ],
                         ),
@@ -953,6 +1080,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       // Organization info card
                       _buildOrganizationInfoCard(context, authProvider),
                       const SizedBox(height: 24),
+
+                      // Generate AI Report button (always visible to allow generating new reports)
+                      Builder(
+                        builder: (context) {
+                          final qProvider = Provider.of<QuestionnaireProvider>(
+                              context,
+                              listen: false);
+                          return _buildGenerateReportButton(
+                              context, riskProvider, qProvider);
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Error message if any
+                      if (riskProvider.errorMessage != null)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 24),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border:
+                                Border.all(color: Colors.red.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline,
+                                  color: Colors.red),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  riskProvider.errorMessage!,
+                                  style: const TextStyle(color: Colors.red),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 20),
+                                onPressed: () => riskProvider.clearError(),
+                                color: Colors.red,
+                              ),
+                            ],
+                          ),
+                        ),
 
                       // Risk score card
                       _buildRiskScoreCard(context, aiReport),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/ai_service.dart';
 import '../models/company_history.dart';
+import '../providers/questionnaire_provider.dart';
 
 class RiskAssessmentProvider extends ChangeNotifier {
   final AIService _aiService;
@@ -23,6 +24,30 @@ class RiskAssessmentProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Generate AI risk assessment from questionnaire response ID (new method)
+  Future<void> generateAIReportFromResponse(String questionnaireResponseId,
+      {String? departmentId}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final riskAssessment = await _aiService.generateRiskAssessmentFromDB(
+        questionnaireResponseId,
+        departmentId: departmentId,
+      );
+
+      _aiReport = riskAssessment;
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = 'Failed to generate AI report: ${e.toString()}';
+      notifyListeners();
+    }
+  }
+
+  /// Generate AI risk assessment (legacy method - kept for compatibility)
   Future<void> generateAIReport() async {
     if (_companyHistory == null) {
       _errorMessage =
@@ -116,6 +141,103 @@ class RiskAssessmentProvider extends ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       _errorMessage = 'Failed to submit questionnaire. Please try again.';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Load latest APPROVED risk assessment for dashboard
+  Future<void> loadLatestRiskAssessment(
+      QuestionnaireProvider? questionnaireProvider) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      // Only fetch APPROVED risk assessments for dashboard
+      final riskAssessments =
+          await _aiService.fetchRiskAssessments(status: 'approved');
+
+      if (riskAssessments.isNotEmpty) {
+        // Sort by created date (newest first) and use the latest one
+        riskAssessments.sort((a, b) {
+          final dateA = DateTime.parse(a['createdAt']);
+          final dateB = DateTime.parse(b['createdAt']);
+          return dateB.compareTo(dateA);
+        });
+
+        _aiReport = riskAssessments.first;
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
+      // No approved risk assessments available
+      _aiReport = null;
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = 'Failed to load risk assessment: ${e.toString()}';
+      notifyListeners();
+    }
+  }
+
+  /// Load pending AI reports for AI report screen
+  Future<List<Map<String, dynamic>>> loadPendingReports() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final riskAssessments =
+          await _aiService.fetchRiskAssessments(status: 'pending');
+      _isLoading = false;
+      notifyListeners();
+      return riskAssessments;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = 'Failed to load pending reports: ${e.toString()}';
+      notifyListeners();
+      return [];
+    }
+  }
+
+  /// Load approved reports for approval screen
+  Future<List<Map<String, dynamic>>> loadApprovedReports() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final riskAssessments =
+          await _aiService.fetchRiskAssessments(status: 'approved');
+      _isLoading = false;
+      notifyListeners();
+      return riskAssessments;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = 'Failed to load approved reports: ${e.toString()}';
+      notifyListeners();
+      return [];
+    }
+  }
+
+  /// Approve a risk assessment
+  Future<bool> approveRiskAssessment(
+      String riskAssessmentId, bool approved) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _aiService.approveRiskAssessment(riskAssessmentId, approved);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = 'Failed to approve risk assessment: ${e.toString()}';
       notifyListeners();
       return false;
     }

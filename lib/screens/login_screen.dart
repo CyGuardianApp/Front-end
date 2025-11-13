@@ -1138,67 +1138,6 @@ class _LoginScreenState extends State<LoginScreen>
                                   ],
                                 ),
                               ),
-                              // Testing cardinalities
-                              if (kDebugMode) ...[
-                                const SizedBox(height: 24),
-                                Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.shade50,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                        color: Colors.orange.shade200),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Icon(Icons.developer_mode,
-                                              color: Colors.orange[700]),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'Testing Credentials:',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.orange[700],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        'CTO: c@c.com / Cc12345@\nCS Head: ciso@c.com / Cc12345@\n(Email case doesn\'t matter)',
-                                        style: TextStyle(fontSize: 12),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      const Text(
-                                        'OTP: 123456',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: Colors.orange.shade100,
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        child: const Text(
-                                          'Note: Registration requires backend services to be running. If registration fails, check that the backend is running on ports 8001 and 8003.',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.orange,
-                                            fontStyle: FontStyle.italic,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
                         ),

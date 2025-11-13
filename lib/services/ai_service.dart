@@ -6,7 +6,253 @@ import '../services/token_service.dart';
 import '../config/api_config.dart';
 
 class AIService {
-  /// Generate risk assessment using AI service
+  /// Generate risk assessment from database (new method)
+  /// Fetches questionnaire response and company data from DB, sends to AI, saves result
+  Future<Map<String, dynamic>> generateRiskAssessmentFromDB(
+    String questionnaireResponseId, {
+    String? departmentId,
+  }) async {
+    try {
+      final accessToken = await TokenService.getValidAccessToken();
+      if (accessToken == null) {
+        throw ApiException('Authentication required for AI analysis');
+      }
+
+      final requestData = {
+        'questionnaire_response_id': questionnaireResponseId,
+        if (departmentId != null) 'department_id': departmentId,
+      };
+
+      // Use longer timeout for AI requests (150 seconds = 2.5 minutes)
+      final response = await HttpService.post(
+        ApiConfig.buildUrl('/risk-assessments/ai/from-db/'),
+        accessToken: accessToken,
+        body: requestData,
+        timeout: const Duration(seconds: 150),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final result = jsonDecode(response.body);
+
+        // Map backend response to frontend format
+        final recommendations =
+            List<String>.from(result['recommendations'] ?? []);
+        final riskValue = (result['risk_value'] as num).toDouble();
+        final estimatedCost = (result['estimated_cost'] as num).toDouble();
+
+        // Convert recommendations to findings format for dashboard compatibility
+        final findings = recommendations.asMap().entries.map((entry) {
+          final index = entry.key;
+          final rec = entry.value;
+          return {
+            'id': 'finding_$index',
+            'category': 'Security',
+            'description': rec,
+            'severity': riskValue >= 70
+                ? 'High'
+                : riskValue >= 30
+                    ? 'Medium'
+                    : 'Low',
+            'estimatedCost': recommendations.isNotEmpty
+                ? (estimatedCost / recommendations.length).roundToDouble()
+                : 0.0,
+          };
+        }).toList();
+
+        return {
+          'id': result['id'],
+          'riskScore': riskValue,
+          'riskLevel': _getRiskLevel(result['risk_value'] as num),
+          'riskValue': riskValue,
+          'recommendations': recommendations,
+          'findings': findings, // Add findings for dashboard compatibility
+          'estimatedCost': estimatedCost,
+          'totalRemediationCost': estimatedCost,
+          'totalRemedationCost':
+              estimatedCost, // Dashboard uses this typo variant
+          'departmentId': result['department_id'],
+          'status': result['status'],
+          'createdAt': result['created_at'],
+          'aiReportId': result['ai_report_id'],
+        };
+      } else if (response.statusCode == 404) {
+        throw ApiException(
+            'Risk assessment endpoint not found. Please ensure the backend service is running and the endpoint is available. (Status: 404)');
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw ApiException(errorData['detail'] ??
+            'AI service returned error: ${response.statusCode}');
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      if (kDebugMode) {
+        print('AI service error: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Get risk level from risk score
+  String _getRiskLevel(num riskScore) {
+    if (riskScore < 30) {
+      return 'Low';
+    } else if (riskScore < 70) {
+      return 'Medium';
+    } else {
+      return 'High';
+    }
+  }
+
+  /// Approve or reject a risk assessment
+  Future<Map<String, dynamic>> approveRiskAssessment(
+    String riskAssessmentId,
+    bool approved,
+  ) async {
+    try {
+      final accessToken = await TokenService.getValidAccessToken();
+      if (accessToken == null) {
+        throw ApiException('Authentication required');
+      }
+
+      final response = await HttpService.put(
+        ApiConfig.buildUrl('/risk-assessments/$riskAssessmentId/approve'),
+        accessToken: accessToken,
+        queryParams: {'approved': approved.toString()},
+      );
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        // Map to frontend format
+        final recommendations =
+            List<String>.from(result['recommendations'] ?? []);
+        final riskValue = (result['risk_value'] as num).toDouble();
+        final estimatedCost = (result['estimated_cost'] as num).toDouble();
+
+        final findings = recommendations.asMap().entries.map((entry) {
+          final index = entry.key;
+          final rec = entry.value;
+          return {
+            'id': 'finding_$index',
+            'category': 'Security',
+            'description': rec,
+            'severity': riskValue >= 70
+                ? 'High'
+                : riskValue >= 30
+                    ? 'Medium'
+                    : 'Low',
+            'estimatedCost': recommendations.isNotEmpty
+                ? (estimatedCost / recommendations.length).roundToDouble()
+                : 0.0,
+          };
+        }).toList();
+
+        return {
+          'id': result['id'],
+          'riskScore': riskValue,
+          'riskLevel': _getRiskLevel(result['risk_value'] as num),
+          'riskValue': riskValue,
+          'recommendations': recommendations,
+          'findings': findings,
+          'estimatedCost': estimatedCost,
+          'totalRemediationCost': estimatedCost,
+          'totalRemedationCost': estimatedCost,
+          'departmentId': result['department_id'],
+          'status': result['status'],
+          'createdAt': result['created_at'],
+          'aiReportId': result['ai_report_id'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw ApiException(
+            errorData['detail'] ?? 'Failed to approve risk assessment');
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Approve risk assessment error: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Fetch risk assessments from database
+  Future<List<Map<String, dynamic>>> fetchRiskAssessments(
+      {String? status}) async {
+    try {
+      final accessToken = await TokenService.getValidAccessToken();
+      if (accessToken == null) {
+        throw ApiException('Authentication required');
+      }
+
+      String url = ApiConfig.buildUrl(ApiConfig.riskAssessments);
+      if (status != null) {
+        url += '?status=$status';
+      }
+
+      final response = await HttpService.get(
+        url,
+        accessToken: accessToken,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as List;
+        return data.map((item) {
+          final recommendations =
+              List<String>.from(item['recommendations'] ?? []);
+          final riskVal = (item['risk_value'] as num).toDouble();
+          final estCost = (item['estimated_cost'] as num? ?? 0).toDouble();
+
+          // Convert recommendations to findings format for dashboard compatibility
+          final findings = recommendations.asMap().entries.map((entry) {
+            final index = entry.key;
+            final rec = entry.value;
+            return {
+              'id': 'finding_$index',
+              'category': 'Security',
+              'description': rec,
+              'severity': riskVal >= 70
+                  ? 'High'
+                  : riskVal >= 30
+                      ? 'Medium'
+                      : 'Low',
+              'estimatedCost': recommendations.isNotEmpty
+                  ? (estCost / recommendations.length).roundToDouble()
+                  : 0.0,
+            };
+          }).toList();
+          return {
+            'id': item['id'],
+            'riskScore': (item['risk_value'] as num).toDouble(),
+            'riskLevel': _getRiskLevel(item['risk_value'] as num),
+            'riskValue': (item['risk_value'] as num).toDouble(),
+            'recommendations': recommendations,
+            'findings': findings, // Add findings for dashboard compatibility
+            'estimatedCost': estCost,
+            'totalRemediationCost': estCost,
+            'totalRemedationCost': estCost, // Dashboard uses this typo variant
+            'departmentId': item['department_id'],
+            'status': item['status'],
+            'createdAt': item['created_at'],
+            'aiReportId': item['ai_report_id'],
+          };
+        }).toList();
+      } else {
+        throw ApiException(
+            'Failed to fetch risk assessments: ${response.statusCode}');
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Fetch risk assessments error: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Generate risk assessment using AI service (legacy method - kept for compatibility)
   Future<Map<String, dynamic>> generateRiskAssessment(
     CompanyHistory companyHistory,
     List<Map<String, dynamic>> questionnaireResponses,

@@ -346,7 +346,10 @@ class QuestionnaireProvider with ChangeNotifier {
       );
 
       if (res.statusCode == 200 || res.statusCode == 201) {
-        _responses.add(response);
+        // Parse the response to get the backend-generated ID
+        final responseData = jsonDecode(res.body);
+        final updatedResponse = QuestionnaireResponse.fromJson(responseData);
+        _responses.add(updatedResponse);
         _isLoading = false;
         notifyListeners();
         return true;
