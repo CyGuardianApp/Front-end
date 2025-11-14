@@ -224,13 +224,21 @@ class _CreateQuestionnaireScreenState extends State<CreateQuestionnaireScreen> {
             ? 'Create Questionnaire'
             : 'Edit Questionnaire'),
         actions: [
-          TextButton(
-            onPressed: _isLoading ? null : _saveQuestionnaire,
-            child: const Text(
-              'Save',
-              style:
-                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
+          Builder(
+            builder: (context) {
+              final theme = Theme.of(context);
+              final isDark = theme.brightness == Brightness.dark;
+              return TextButton(
+                onPressed: _isLoading ? null : _saveQuestionnaire,
+                child: Text(
+                  'Save',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),

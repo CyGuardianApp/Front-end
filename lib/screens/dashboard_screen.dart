@@ -50,19 +50,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String orgName = organization.domain.split('.').first;
     orgName = orgName[0].toUpperCase() + orgName.substring(1);
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Theme.of(context).primaryColor.withOpacity(0.1),
-            Theme.of(context).primaryColor.withOpacity(0.05),
-          ],
+          colors: isDark
+              ? [
+                  Colors.grey[800]!.withOpacity(0.5),
+                  Colors.grey[900]!.withOpacity(0.3),
+                ]
+              : [
+                  Theme.of(context).primaryColor.withOpacity(0.1),
+                  Theme.of(context).primaryColor.withOpacity(0.05),
+                ],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Theme.of(context).primaryColor.withOpacity(0.2),
+          color: isDark
+              ? Colors.grey[700]!.withOpacity(0.5)
+              : Theme.of(context).primaryColor.withOpacity(0.2),
           width: 1,
         ),
       ),
@@ -103,7 +113,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           'Organization',
                           style:
                               Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Theme.of(context).primaryColor,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : Theme.of(context).primaryColor,
                                     fontWeight: FontWeight.w600,
                                   ),
                         ),
@@ -112,6 +124,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           style:
                               Theme.of(context).textTheme.titleLarge?.copyWith(
                                     fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurface,
                                   ),
                         ),
                       ],
@@ -179,10 +192,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildInfoRow(BuildContext context, IconData icon, String label,
       String value, Color color) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white.withOpacity(0.7),
+        color: isDark
+            ? Colors.grey[800]!.withOpacity(0.5)
+            : AppColors.white.withOpacity(0.7),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: color.withOpacity(0.2),
@@ -208,12 +225,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   label,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w500,
+                        color: theme.colorScheme.onSurface,
                       ),
                 ),
                 Text(
                   value,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
                       ),
                 ),
               ],
@@ -786,20 +805,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildFindingsTable(
       BuildContext context, Map<String, dynamic>? aiReport) {
     final findings = aiReport?['findings'] ?? [];
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final borderColor = isDark 
+        ? Colors.grey[700]! 
+        : Colors.grey[200]!;
 
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Colors.grey[50]!,
-            Colors.white,
-          ],
+          colors: isDark
+              ? [
+                  Colors.grey[900]!,
+                  Colors.grey[800]!,
+                ]
+              : [
+                  Colors.grey[50]!,
+                  Colors.white,
+                ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.grey[200]!,
+          color: borderColor,
           width: 1,
         ),
       ),
@@ -836,6 +865,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     'Top Security Findings',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
                         ),
                   ),
                 ],
@@ -850,12 +880,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Icon(
                           Icons.check_circle_outline,
                           size: 48,
-                          color: Colors.grey[400],
+                          color: isDark ? Colors.grey[600] : Colors.grey[400],
                         ),
                         const SizedBox(height: 16),
                         Text(
                           'No findings available',
-                          style: Theme.of(context).textTheme.bodyLarge,
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                color: theme.colorScheme.onSurface,
+                              ),
                         ),
                       ],
                     ),
@@ -864,9 +896,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               else
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark ? Colors.grey[900] : Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[200]!),
+                    border: Border.all(color: borderColor),
                   ),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -876,20 +908,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 fontWeight: FontWeight.bold,
                                 color: Theme.of(context).primaryColor,
                               ),
-                      dataTextStyle: Theme.of(context).textTheme.bodyMedium,
-                      columns: const [
-                        DataColumn(label: Text('Category')),
-                        DataColumn(label: Text('Description')),
-                        DataColumn(label: Text('Severity')),
-                        DataColumn(label: Text('Est. Cost')),
+                      dataTextStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface,
+                          ),
+                      columns: [
+                        DataColumn(
+                          label: Text(
+                            'Category',
+                            style: TextStyle(color: theme.colorScheme.onSurface),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Description',
+                            style: TextStyle(color: theme.colorScheme.onSurface),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Severity',
+                            style: TextStyle(color: theme.colorScheme.onSurface),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Est. Cost',
+                            style: TextStyle(color: theme.colorScheme.onSurface),
+                          ),
+                        ),
                       ],
                       rows: List<DataRow>.generate(
                         findings.length > 5 ? 5 : findings.length,
                         (index) => DataRow(
                           cells: [
-                            DataCell(Text(findings[index]['category'] ?? '')),
-                            DataCell(
-                                Text(findings[index]['description'] ?? '')),
+                            DataCell(Text(
+                              findings[index]['category'] ?? '',
+                              style: TextStyle(color: theme.colorScheme.onSurface),
+                            )),
+                            DataCell(Text(
+                              findings[index]['description'] ?? '',
+                              style: TextStyle(color: theme.colorScheme.onSurface),
+                            )),
                             DataCell(
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -1031,49 +1090,67 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Welcome message
-                      Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Theme.of(context).primaryColor.withOpacity(0.1),
-                              Theme.of(context).primaryColor.withOpacity(0.05),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color:
-                                Theme.of(context).primaryColor.withOpacity(0.2),
-                            width: 1,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Welcome back,',
-                              style: Theme.of(context).textTheme.bodyLarge,
+                      Builder(
+                        builder: (context) {
+                          final theme = Theme.of(context);
+                          final isDark = theme.brightness == Brightness.dark;
+                          return Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: isDark
+                                    ? [
+                                        Colors.grey[800]!.withOpacity(0.5),
+                                        Colors.grey[900]!.withOpacity(0.3),
+                                      ]
+                                    : [
+                                        Theme.of(context).primaryColor.withOpacity(0.1),
+                                        Theme.of(context).primaryColor.withOpacity(0.05),
+                                      ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.grey[700]!.withOpacity(0.5)
+                                    : Theme.of(context).primaryColor.withOpacity(0.2),
+                                width: 1,
+                              ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              authProvider.user?.name ?? 'User',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(context).primaryColor,
-                                  ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Welcome back,',
+                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                        color: theme.colorScheme.onSurface,
+                                      ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  authProvider.user?.name ?? 'User',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark
+                                            ? Colors.white
+                                            : Theme.of(context).primaryColor,
+                                      ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Here\'s your cybersecurity overview',
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        color: theme.colorScheme.onSurface,
+                                      ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Here\'s your cybersecurity overview',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
                       const SizedBox(height: 24),
 
@@ -1081,17 +1158,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _buildOrganizationInfoCard(context, authProvider),
                       const SizedBox(height: 24),
 
-                      // Generate AI Report button (always visible to allow generating new reports)
-                      Builder(
-                        builder: (context) {
-                          final qProvider = Provider.of<QuestionnaireProvider>(
-                              context,
-                              listen: false);
-                          return _buildGenerateReportButton(
-                              context, riskProvider, qProvider);
-                        },
-                      ),
-                      const SizedBox(height: 24),
+                      // Generate AI Report button (only visible to CISO)
+                      if (authProvider.user?.role == UserRole.cyberSecurityHead)
+                        Builder(
+                          builder: (context) {
+                            final qProvider = Provider.of<QuestionnaireProvider>(
+                                context,
+                                listen: false);
+                            return _buildGenerateReportButton(
+                                context, riskProvider, qProvider);
+                          },
+                        ),
+                      if (authProvider.user?.role == UserRole.cyberSecurityHead)
+                        const SizedBox(height: 24),
 
                       // Error message if any
                       if (riskProvider.errorMessage != null)

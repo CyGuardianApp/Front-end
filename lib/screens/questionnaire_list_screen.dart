@@ -99,9 +99,15 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
             const Tab(text: 'Completed'),
             if (isCSHead) const Tab(text: 'Drafts'), // Only show Drafts tab for CISO
           ],
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white.withOpacity(0.7),
-          indicatorColor: Colors.white,
+          labelColor: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white
+              : Colors.black,
+          unselectedLabelColor: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white.withOpacity(0.6)
+              : Colors.black.withOpacity(0.6),
+          indicatorColor: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white
+              : Colors.black,
         ),
         actions: [
           IconButton(
@@ -405,8 +411,11 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
           questionnaireProvider.getLatestResponse(questionnaire.id, userId);
     }
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
+      color: isDark ? Colors.grey[800] : null,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: () {
@@ -457,9 +466,10 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
                   Expanded(
                     child: Text(
                       questionnaire.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -495,7 +505,7 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
               Text(
                 questionnaire.description,
                 style: TextStyle(
-                  color: Colors.grey[700],
+                  color: isDark ? Colors.grey[300] : Colors.grey[700],
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -504,23 +514,30 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
               const SizedBox(height: 16),
               Row(
                 children: [
-                  Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
+                  Icon(
+                    Icons.calendar_today,
+                    size: 16,
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     'Created: ${_formatDate(questionnaire.createdAt)}',
                     style: TextStyle(
-                      color: Colors.grey[600],
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
                       fontSize: 12,
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Icon(Icons.format_list_numbered,
-                      size: 16, color: Colors.grey[600]),
+                  Icon(
+                    Icons.format_list_numbered,
+                    size: 16,
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     '${questionnaire.questions.length} Questions',
                     style: TextStyle(
-                      color: Colors.grey[600],
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
                       fontSize: 12,
                     ),
                   ),
@@ -534,20 +551,30 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.grey[100],
+                          color: isDark ? Colors.grey[800] : Colors.grey[100],
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[300]!),
+                          border: Border.all(
+                            color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                                'Submitted at: ${r.submittedAt.toLocal().toString()}'),
+                              'Submitted at: ${r.submittedAt.toLocal().toString()}',
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
                             const SizedBox(height: 4),
                             ...r.responses.entries.map((entry) => Padding(
                                   padding: const EdgeInsets.only(top: 4.0),
                                   child: Text(
-                                      '${entry.key}: ${entry.value ?? "-"}'),
+                                    '${entry.key}: ${entry.value ?? "-"}',
+                                    style: TextStyle(
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
                                 )),
                           ],
                         ),
@@ -620,19 +647,31 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
                       if (questionnaire.status == QuestionnaireStatus.draft)
                         Row(
                           children: [
-                            OutlinedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        CreateQuestionnaireScreen(
-                                      questionnaireId: questionnaire.id,
+                            Builder(
+                              builder: (context) {
+                                final theme = Theme.of(context);
+                                final isDark = theme.brightness == Brightness.dark;
+                                return OutlinedButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            CreateQuestionnaireScreen(
+                                          questionnaireId: questionnaire.id,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: isDark ? Colors.white : Colors.black,
+                                    side: BorderSide(
+                                      color: isDark ? Colors.white70 : Colors.black,
                                     ),
                                   ),
+                                  child: const Text('Edit'),
                                 );
                               },
-                              child: const Text('Edit'),
                             ),
                             const SizedBox(width: 8),
                             ElevatedButton(

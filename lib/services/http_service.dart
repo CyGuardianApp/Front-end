@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -210,6 +211,13 @@ class HttpService {
 
         // Check for server errors (5xx) - retry these
         if (response.statusCode >= 500) {
+          // Special handling for 504 Gateway Timeout
+          if (response.statusCode == 504) {
+            throw ApiException(
+              'Gateway timeout. The request took too long to process. This may happen with AI generation. Please try again.',
+              statusCode: 504,
+            );
+          }
           throw ApiException(
             'Server error: ${response.statusCode}',
             statusCode: response.statusCode,
@@ -218,10 +226,14 @@ class HttpService {
 
         return response;
       } on SocketException {
-        lastException = ApiException('No internet connection');
+        lastException = ApiException('Network error. Please check your internet connection and ensure the server is running.');
         if (attempt < _maxRetries - 1) {
           await Future.delayed(_retryDelay * (attempt + 1));
         }
+      } on TimeoutException {
+        lastException = ApiException('Request timeout. The server took too long to respond. Please try again.', statusCode: 504);
+        // Don't retry timeout errors - they indicate the server is overloaded or the request is too complex
+        break;
       } on HttpException catch (e) {
         lastException = ApiException('HTTP error: ${e.message}');
         if (attempt < _maxRetries - 1) {
@@ -231,6 +243,12 @@ class HttpService {
         lastException = ApiException('Format error: ${e.message}');
         break; // Don't retry format errors
       } catch (e) {
+        // Check if it's a timeout error in the message
+        final errorStr = e.toString().toLowerCase();
+        if (errorStr.contains('timeout') || errorStr.contains('timed out')) {
+          lastException = ApiException('Request timeout. The server took too long to respond. Please try again.', statusCode: 504);
+          break;
+        }
         lastException = ApiException('Unexpected error: $e');
         if (attempt < _maxRetries - 1) {
           await Future.delayed(_retryDelay * (attempt + 1));

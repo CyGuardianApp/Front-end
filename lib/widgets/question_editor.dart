@@ -158,15 +158,20 @@ class _QuestionEditorState extends State<QuestionEditor> {
             const SizedBox(height: 16),
 
             // Question text field
-            TextFormField(
-              controller: _questionTextController,
-              decoration: const InputDecoration(
-                labelText: 'Question Text',
-                hintText: 'Enter your question here',
-                border: OutlineInputBorder(),
+            Directionality(
+              textDirection: TextDirection.ltr,
+              child: TextFormField(
+                controller: _questionTextController,
+                textDirection: TextDirection.ltr,
+                textAlign: TextAlign.left,
+                decoration: const InputDecoration(
+                  labelText: 'Question Text',
+                  hintText: 'Enter your question here',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (_) => _updateQuestion(),
+                maxLines: 2,
               ),
-              onChanged: (_) => _updateQuestion(),
-              maxLines: 2,
             ),
             const SizedBox(height: 16),
 
@@ -214,9 +219,9 @@ class _QuestionEditorState extends State<QuestionEditor> {
                             value == QuestionType.checkbox) &&
                         _optionControllers.isEmpty) {
                       _optionControllers
-                          .add(TextEditingController(text: 'Option 1'));
+                          .add(TextEditingController());
                       _optionControllers
-                          .add(TextEditingController(text: 'Option 2'));
+                          .add(TextEditingController());
                     }
                   });
                   _updateQuestion();
@@ -256,13 +261,19 @@ class _QuestionEditorState extends State<QuestionEditor> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: TextFormField(
-                          controller: _optionControllers[index],
-                          decoration: InputDecoration(
-                            labelText: 'Option ${index + 1}',
-                            border: const OutlineInputBorder(),
+                        child: Directionality(
+                          textDirection: TextDirection.ltr,
+                          child: TextFormField(
+                            controller: _optionControllers[index],
+                            textDirection: TextDirection.ltr,
+                            textAlign: TextAlign.left,
+                            decoration: InputDecoration(
+                              labelText: 'Option ${index + 1}',
+                              hintText: 'Enter option text',
+                              border: const OutlineInputBorder(),
+                            ),
+                            onChanged: (_) => _updateQuestion(),
                           ),
-                          onChanged: (_) => _updateQuestion(),
                         ),
                       ),
                       IconButton(

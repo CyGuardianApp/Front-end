@@ -44,56 +44,78 @@ class ResponseDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Questionnaire header
-            Card(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      questionnaire.title,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      questionnaire.description,
-                      style: TextStyle(
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Divider(),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Builder(
+              builder: (context) {
+                final theme = Theme.of(context);
+                final isDark = theme.brightness == Brightness.dark;
+                return Card(
+                  color: isDark ? Colors.grey[800] : null,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Submitted on:',
+                        Text(
+                          questionnaire.title,
                           style: TextStyle(
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
                           ),
                         ),
-                        Text(_formatDateTime(response.submittedAt)),
+                        const SizedBox(height: 8),
+                        Text(
+                          questionnaire.description,
+                          style: TextStyle(
+                            color: isDark ? Colors.grey[300] : Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Divider(
+                          color: isDark ? Colors.grey[700] : null,
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Submitted on:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            Text(
+                              _formatDateTime(response.submittedAt),
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 24),
 
             // Responses
-            const Text(
-              'Your Answers',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            Builder(
+              builder: (context) {
+                final theme = Theme.of(context);
+                return Text(
+                  'Your Answers',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 8),
 
@@ -123,8 +145,11 @@ class ResponseDetailScreen extends StatelessWidget {
 
   Widget _buildQuestionResponseCard(
       BuildContext context, Question question, dynamic answer) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
+      color: isDark ? Colors.grey[800] : null,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -133,13 +158,16 @@ class ResponseDetailScreen extends StatelessWidget {
           children: [
             Text(
               question.text,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
+                color: theme.colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 8),
-            const Divider(),
+            Divider(
+              color: isDark ? Colors.grey[700] : null,
+            ),
             const SizedBox(height: 8),
             _buildAnswerDisplay(context, question, answer),
           ],
@@ -150,19 +178,27 @@ class ResponseDetailScreen extends StatelessWidget {
 
   Widget _buildAnswerDisplay(
       BuildContext context, Question question, dynamic answer) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     if (answer == null) {
-      return const Text(
+      return Text(
         'Not answered',
         style: TextStyle(
           fontStyle: FontStyle.italic,
-          color: Colors.grey,
+          color: isDark ? Colors.grey[400] : Colors.grey,
         ),
       );
     }
 
     switch (question.type) {
       case QuestionType.text:
-        return Text(answer.toString());
+        return Text(
+          answer.toString(),
+          style: TextStyle(
+            color: theme.colorScheme.onSurface,
+          ),
+        );
 
       case QuestionType.multipleChoice:
         return Row(
@@ -172,15 +208,23 @@ class ResponseDetailScreen extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               answer,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface,
               ),
             ),
           ],
         );
 
       case QuestionType.checkbox:
-        if (answer is! List) return const Text('Invalid answer format');
+        if (answer is! List) {
+          return Text(
+            'Invalid answer format',
+            style: TextStyle(
+              color: theme.colorScheme.onSurface,
+            ),
+          );
+        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,7 +236,12 @@ class ResponseDetailScreen extends StatelessWidget {
                   Icon(Icons.check_circle,
                       color: Theme.of(context).primaryColor, size: 20),
                   const SizedBox(width: 8),
-                  Text(option),
+                  Text(
+                    option,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
                 ],
               ),
             );
@@ -217,7 +266,9 @@ class ResponseDetailScreen extends StatelessWidget {
                 child: Text(
                   '$rating',
                   style: TextStyle(
-                    color: rating <= answer ? Colors.white : Colors.black,
+                    color: rating <= answer
+                        ? Colors.white
+                        : (isDark ? Colors.white : Colors.black),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -250,12 +301,27 @@ class ResponseDetailScreen extends StatelessWidget {
           // Try to parse it
           try {
             final date = DateTime.parse(answer.toString());
-            return Text(_formatDate(date));
+            return Text(
+              _formatDate(date),
+              style: TextStyle(
+                color: theme.colorScheme.onSurface,
+              ),
+            );
           } catch (e) {
-            return const Text('Invalid date format');
+            return Text(
+              'Invalid date format',
+              style: TextStyle(
+                color: theme.colorScheme.onSurface,
+              ),
+            );
           }
         }
-        return Text(_formatDate(answer));
+        return Text(
+          _formatDate(answer),
+          style: TextStyle(
+            color: theme.colorScheme.onSurface,
+          ),
+        );
     }
   }
 

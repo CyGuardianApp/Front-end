@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../models/company_history.dart';
@@ -78,16 +79,41 @@ class AIService {
       } else if (response.statusCode == 404) {
         throw ApiException(
             'Risk assessment endpoint not found. Please ensure the backend service is running and the endpoint is available. (Status: 404)');
+      } else if (response.statusCode == 504) {
+        throw ApiException(
+            'Gateway timeout. The AI risk assessment generation took too long. This can happen when the AI model is loading or processing complex data. Please wait a moment and try again.');
       } else {
-        final errorData = jsonDecode(response.body);
-        throw ApiException(errorData['detail'] ??
-            'AI service returned error: ${response.statusCode}');
+        String errorMessage = 'AI service returned error: ${response.statusCode}';
+        try {
+          final errorData = jsonDecode(response.body);
+          errorMessage = errorData['detail'] ?? errorData['message'] ?? errorMessage;
+        } catch (e) {
+          // If JSON parsing fails, use default message
+        }
+        throw ApiException(errorMessage, statusCode: response.statusCode);
       }
-    } on ApiException {
+    } on ApiException catch (e) {
+      // Re-throw with improved message for timeout errors
+      if (e.statusCode == 504) {
+        throw ApiException(
+            'Gateway timeout. The AI risk assessment generation took too long. This can happen when the AI model is loading or processing complex data. Please wait a moment and try again.',
+            statusCode: 504);
+      }
       rethrow;
+    } on TimeoutException {
+      throw ApiException(
+          'Request timeout. The AI service took too long to respond. This can happen when the AI model is loading or processing complex data. Please wait a moment and try again.',
+          statusCode: 504);
     } catch (e) {
       if (kDebugMode) {
         print('AI service error: $e');
+      }
+      // Check if it's a timeout error
+      final errorStr = e.toString().toLowerCase();
+      if (errorStr.contains('timeout') || errorStr.contains('timed out')) {
+        throw ApiException(
+            'Request timeout. The AI service took too long to respond. This can happen when the AI model is loading or processing complex data. Please wait a moment and try again.',
+            statusCode: 504);
       }
       rethrow;
     }

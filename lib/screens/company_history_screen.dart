@@ -347,18 +347,26 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
         title: const Text('Company History'),
         actions: [
           if (isCSHead)
-            TextButton(
-              onPressed: _isLoading
-                  ? null
-                  : () {
-                      setState(() {
-                        _isEditing = !_isEditing;
-                      });
-                    },
-              child: Text(
-                _isEditing ? 'Cancel' : 'Edit',
-                style: const TextStyle(color: Colors.white),
-              ),
+            Builder(
+              builder: (context) {
+                final theme = Theme.of(context);
+                final isDark = theme.brightness == Brightness.dark;
+                return TextButton(
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          setState(() {
+                            _isEditing = !_isEditing;
+                          });
+                        },
+                  child: Text(
+                    _isEditing ? 'Cancel' : 'Edit',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                );
+              },
             ),
         ],
       ),
@@ -1082,16 +1090,26 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
 
           // Save button
           Center(
-            child: ElevatedButton.icon(
-              onPressed: _saveCompanyHistory,
-              icon: const Icon(Icons.save),
-              label: const Text('Save Company Information'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 12,
-                ),
-              ),
+            child: Builder(
+              builder: (context) {
+                final theme = Theme.of(context);
+                final isDark = theme.brightness == Brightness.dark;
+                return ElevatedButton.icon(
+                  onPressed: _saveCompanyHistory,
+                  icon: const Icon(Icons.save),
+                  label: const Text('Save Company Information'),
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: isDark ? Colors.white : Colors.black,
+                    backgroundColor: isDark
+                        ? Theme.of(context).primaryColor
+                        : Colors.grey[200],
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 12,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(height: 16),
@@ -1706,42 +1724,59 @@ class _CompanyHistoryScreenState extends State<CompanyHistoryScreen> {
           const SizedBox(height: 16),
 
         // بطاقة معلومات التحليل
-        Card(
-          elevation: 2,
-          color: Colors.blue.shade50,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+        Builder(
+          builder: (context) {
+            final theme = Theme.of(context);
+            final isDark = theme.brightness == Brightness.dark;
+            return Card(
+              elevation: 2,
+              color: isDark
+                  ? Colors.grey[800]!.withOpacity(0.8)
+                  : Colors.blue.shade50,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.lightbulb, color: Colors.blue[700]),
-                    const SizedBox(width: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.lightbulb,
+                          color: isDark ? Colors.blue[300] : Colors.blue[700],
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'AI Analysis Insight',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.blue[300] : Colors.blue[700],
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                     Text(
-                      'AI Analysis Insight',
+                      'This information is used by the AI to contextualize your organization\'s risk assessment. The more detailed and accurate your security history and current measures, the more tailored the recommendations will be.',
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue[700],
-                        fontSize: 16,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Your company profile influences risk scoring in areas such as industry-specific threats, organizational maturity, and historical vulnerability patterns.',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'This information is used by the AI to contextualize your organization\'s risk assessment. The more detailed and accurate your security history and current measures, the more tailored the recommendations will be.',
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Your company profile influences risk scoring in areas such as industry-specific threats, organizational maturity, and historical vulnerability patterns.',
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ],
     );

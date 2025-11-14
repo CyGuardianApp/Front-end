@@ -81,6 +81,7 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           title: 'CyGuardian',
           debugShowCheckedModeBanner: false,
+          locale: const Locale('en', 'US'),
           theme: ThemeData(
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(
