@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import '../services/http_service.dart';
@@ -78,8 +80,18 @@ class CompanyHistoryProvider with ChangeNotifier {
       if (kDebugMode) {
         print(">> API Exception in loadCompanyHistory: ${e.message}");
       }
+    } on TimeoutException catch (e) {
+      _errorMessage = 'Request timeout. The server took too long to respond. Please try again.';
+      if (kDebugMode) {
+        print(">> Timeout in loadCompanyHistory: $e");
+      }
+    } on SocketException catch (e) {
+      _errorMessage = 'Network error. Please check your internet connection and ensure the server is running.';
+      if (kDebugMode) {
+        print(">> Network error in loadCompanyHistory: $e");
+      }
     } catch (e) {
-      _errorMessage = 'Error loading data: $e';
+      _errorMessage = 'Failed to load company history: ${e.toString()}';
       if (kDebugMode) {
         print(">> Exception in loadCompanyHistory: $e");
       }
@@ -142,8 +154,18 @@ class CompanyHistoryProvider with ChangeNotifier {
       if (kDebugMode) {
         print(">> API Exception in saveCompanyHistory: ${e.message}");
       }
+    } on TimeoutException catch (e) {
+      _errorMessage = 'Request timeout. The server took too long to respond. Please try again.';
+      if (kDebugMode) {
+        print(">> Timeout in saveCompanyHistory: $e");
+      }
+    } on SocketException catch (e) {
+      _errorMessage = 'Network error. Please check your internet connection and ensure the server is running.';
+      if (kDebugMode) {
+        print(">> Network error in saveCompanyHistory: $e");
+      }
     } catch (e) {
-      _errorMessage = 'Error saving data: $e';
+      _errorMessage = 'Failed to save company history: ${e.toString()}';
       if (kDebugMode) {
         print(">> Exception in saveCompanyHistory: $e");
       }

@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/http_service.dart';
@@ -175,8 +177,24 @@ class QuestionnaireProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return false;
+    } on TimeoutException catch (e) {
+      _errorMessage = 'Request timeout. The server took too long to respond. Please try again.';
+      if (kDebugMode) {
+        debugPrint('Create questionnaire timeout: $e');
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } on SocketException catch (e) {
+      _errorMessage = 'Network error. Please check your internet connection and ensure the server is running.';
+      if (kDebugMode) {
+        debugPrint('Create questionnaire network error: $e');
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
     } catch (e) {
-      _errorMessage = 'Exception: $e';
+      _errorMessage = 'Failed to create questionnaire: ${e.toString()}';
       if (kDebugMode) {
         debugPrint('Create questionnaire error: $e');
       }
@@ -230,8 +248,24 @@ class QuestionnaireProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return false;
+    } on TimeoutException catch (e) {
+      _errorMessage = 'Request timeout. The server took too long to respond. Please try again.';
+      if (kDebugMode) {
+        debugPrint('Update questionnaire timeout: $e');
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } on SocketException catch (e) {
+      _errorMessage = 'Network error. Please check your internet connection and ensure the server is running.';
+      if (kDebugMode) {
+        debugPrint('Update questionnaire network error: $e');
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
     } catch (e) {
-      _errorMessage = 'Exception: $e';
+      _errorMessage = 'Failed to update questionnaire: ${e.toString()}';
       if (kDebugMode) {
         debugPrint('Update questionnaire error: $e');
       }
@@ -289,8 +323,18 @@ class QuestionnaireProvider with ChangeNotifier {
       if (kDebugMode) {
         debugPrint('Fetch questionnaires API error: ${e.message}');
       }
+    } on TimeoutException catch (e) {
+      _errorMessage = 'Request timeout. The server took too long to respond. Please try again.';
+      if (kDebugMode) {
+        debugPrint('Fetch questionnaires timeout: $e');
+      }
+    } on SocketException catch (e) {
+      _errorMessage = 'Network error. Please check your internet connection and ensure the server is running.';
+      if (kDebugMode) {
+        debugPrint('Fetch questionnaires network error: $e');
+      }
     } catch (e) {
-      _errorMessage = 'Exception: $e';
+      _errorMessage = 'Failed to load questionnaires: ${e.toString()}';
       if (kDebugMode) {
         debugPrint('Fetch questionnaires error: $e');
       }
@@ -368,8 +412,24 @@ class QuestionnaireProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return false;
+    } on TimeoutException catch (e) {
+      _errorMessage = 'Request timeout. The server took too long to respond. Please try again.';
+      if (kDebugMode) {
+        debugPrint('Submit response timeout: $e');
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } on SocketException catch (e) {
+      _errorMessage = 'Network error. Please check your internet connection and ensure the server is running.';
+      if (kDebugMode) {
+        debugPrint('Submit response network error: $e');
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
     } catch (e) {
-      _errorMessage = 'Exception: $e';
+      _errorMessage = 'Failed to submit response: ${e.toString()}';
       if (kDebugMode) {
         debugPrint('Submit response error: $e');
       }
@@ -438,8 +498,18 @@ class QuestionnaireProvider with ChangeNotifier {
       if (kDebugMode) {
         debugPrint('Fetch responses API error: ${e.message}');
       }
+    } on TimeoutException catch (e) {
+      _errorMessage = 'Request timeout. The server took too long to respond. Please try again.';
+      if (kDebugMode) {
+        debugPrint('Fetch responses timeout: $e');
+      }
+    } on SocketException catch (e) {
+      _errorMessage = 'Network error. Please check your internet connection and ensure the server is running.';
+      if (kDebugMode) {
+        debugPrint('Fetch responses network error: $e');
+      }
     } catch (e) {
-      _errorMessage = 'Exception: $e';
+      _errorMessage = 'Failed to load responses: ${e.toString()}';
       if (kDebugMode) {
         debugPrint('Fetch responses error: $e');
       }

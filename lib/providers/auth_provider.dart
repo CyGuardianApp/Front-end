@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import '../services/auth_service.dart' as auth_service;
 import '../services/otp_service.dart';
 import '../services/http_service.dart';
@@ -161,13 +162,31 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } on ApiException catch (e) {
-      _errorMessage = e.message;
+      // Handle specific error cases
+      if (e.statusCode == 401) {
+        _errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+      } else if (e.statusCode == 429) {
+        _errorMessage = e.message; // Show the cooldown message from server
+      } else if (e.statusCode == 503 || e.statusCode == 502) {
+        _errorMessage = 'Service temporarily unavailable. Please try again in a moment.';
+      } else {
+        _errorMessage = e.message; // Show the actual error message from server
+      }
       if (kDebugMode) {
         print('Login API error: ${e.message} (${e.statusCode})');
       }
+    } on TimeoutException catch (e) {
+      _errorMessage = 'Request timeout. The server took too long to respond. Please try again.';
+      if (kDebugMode) {
+        print('Login timeout error: $e');
+      }
+    } on SocketException catch (e) {
+      _errorMessage = 'Network error. Please check your internet connection and ensure the server is running.';
+      if (kDebugMode) {
+        print('Login network error: $e');
+      }
     } catch (e) {
-      _errorMessage =
-          'Login failed. Please check your internet connection and try again.';
+      _errorMessage = 'Login failed: ${e.toString()}';
       if (kDebugMode) {
         print('Login error: $e');
       }
@@ -216,10 +235,15 @@ class AuthProvider extends ChangeNotifier {
       // Verify OTP first
       final otpValid = await verifyOTP(email, otp);
       if (!otpValid) {
+        // OTP verification failed - error message already set by verifyOTP
         _isLoading = false;
         notifyListeners();
         return false;
       }
+
+      // Clear any previous error messages before attempting registration
+      _errorMessage = null;
+      notifyListeners();
 
       // Call the auth service to register
       final data = await _authService.signUp(
@@ -244,10 +268,15 @@ class AuthProvider extends ChangeNotifier {
       );
 
       // Try to auto-login after registration
+      // Add a small delay to ensure database commit is complete
+      await Future.delayed(const Duration(milliseconds: 500));
+      
       final loggedIn = await login(email, password);
       if (!loggedIn) {
+        // Show the actual login error message instead of generic message
+        final loginError = _errorMessage ?? 'Auto-login failed';
         _errorMessage =
-            'Registration successful, but auto-login failed. Please log in manually.';
+            'Registration successful, but auto-login failed: $loginError. Please try logging in manually.';
         _isLoading = false;
         notifyListeners();
         return false;
@@ -343,13 +372,30 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } on ApiException catch (e) {
-      _errorMessage = e.message;
+      // Handle specific error cases
+      if (e.statusCode == 429) {
+        // Too Many Requests - OTP cooldown
+        _errorMessage = e.message; // Server message includes remaining time
+      } else if (e.statusCode == 503 || e.statusCode == 502) {
+        _errorMessage = 'Email service temporarily unavailable. Please try again in a moment.';
+      } else {
+        _errorMessage = e.message; // Show the actual error message from server
+      }
       if (kDebugMode) {
         print('Send OTP API error: ${e.message} (${e.statusCode})');
       }
+    } on TimeoutException catch (e) {
+      _errorMessage = 'Request timeout. The server took too long to respond. Please try again.';
+      if (kDebugMode) {
+        print('Send OTP timeout error: $e');
+      }
+    } on SocketException catch (e) {
+      _errorMessage = 'Network error. Please check your internet connection and ensure the server is running.';
+      if (kDebugMode) {
+        print('Send OTP network error: $e');
+      }
     } catch (e) {
-      _errorMessage =
-          'Failed to send OTP. Please check your internet connection.';
+      _errorMessage = 'Failed to send OTP: ${e.toString()}';
       if (kDebugMode) {
         print('Send OTP error: $e');
       }

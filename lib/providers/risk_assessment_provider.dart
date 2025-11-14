@@ -1,5 +1,8 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../services/ai_service.dart';
+import '../services/http_service.dart';
 import '../models/company_history.dart';
 import '../providers/questionnaire_provider.dart';
 
@@ -40,6 +43,18 @@ class RiskAssessmentProvider extends ChangeNotifier {
       _aiReport = riskAssessment;
       _isLoading = false;
       notifyListeners();
+    } on ApiException catch (e) {
+      _isLoading = false;
+      _errorMessage = e.message;
+      notifyListeners();
+    } on TimeoutException {
+      _isLoading = false;
+      _errorMessage = 'Request timeout. The AI service took too long to respond. Please try again.';
+      notifyListeners();
+    } on SocketException {
+      _isLoading = false;
+      _errorMessage = 'Network error. Please check your internet connection and ensure the server is running.';
+      notifyListeners();
     } catch (e) {
       _isLoading = false;
       _errorMessage = 'Failed to generate AI report: ${e.toString()}';
@@ -71,9 +86,21 @@ class RiskAssessmentProvider extends ChangeNotifier {
       _aiReport = riskAssessment;
       _isLoading = false;
       notifyListeners();
+    } on ApiException catch (e) {
+      _isLoading = false;
+      _errorMessage = e.message;
+      notifyListeners();
+    } on TimeoutException {
+      _isLoading = false;
+      _errorMessage = 'Request timeout. The AI service took too long to respond. Please try again.';
+      notifyListeners();
+    } on SocketException {
+      _isLoading = false;
+      _errorMessage = 'Network error. Please check your internet connection and ensure the server is running.';
+      notifyListeners();
     } catch (e) {
       _isLoading = false;
-      _errorMessage = 'Failed to generate AI report. Please try again.';
+      _errorMessage = 'Failed to generate AI report: ${e.toString()}';
       notifyListeners();
     }
   }
@@ -105,9 +132,24 @@ class RiskAssessmentProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
+    } on ApiException catch (e) {
+      _isLoading = false;
+      _errorMessage = e.message;
+      notifyListeners();
+      return false;
+    } on TimeoutException {
+      _isLoading = false;
+      _errorMessage = 'Request timeout. The server took too long to respond. Please try again.';
+      notifyListeners();
+      return false;
+    } on SocketException {
+      _isLoading = false;
+      _errorMessage = 'Network error. Please check your internet connection and ensure the server is running.';
+      notifyListeners();
+      return false;
     } catch (e) {
       _isLoading = false;
-      _errorMessage = 'Failed to process approval. Please try again.';
+      _errorMessage = 'Failed to process approval: ${e.toString()}';
       notifyListeners();
       return false;
     }
@@ -138,9 +180,24 @@ class RiskAssessmentProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
+    } on ApiException catch (e) {
+      _isLoading = false;
+      _errorMessage = e.message;
+      notifyListeners();
+      return false;
+    } on TimeoutException {
+      _isLoading = false;
+      _errorMessage = 'Request timeout. The server took too long to respond. Please try again.';
+      notifyListeners();
+      return false;
+    } on SocketException {
+      _isLoading = false;
+      _errorMessage = 'Network error. Please check your internet connection and ensure the server is running.';
+      notifyListeners();
+      return false;
     } catch (e) {
       _isLoading = false;
-      _errorMessage = 'Failed to submit questionnaire. Please try again.';
+      _errorMessage = 'Failed to submit questionnaire: ${e.toString()}';
       notifyListeners();
       return false;
     }
@@ -176,6 +233,18 @@ class RiskAssessmentProvider extends ChangeNotifier {
       _aiReport = null;
       _isLoading = false;
       notifyListeners();
+    } on ApiException catch (e) {
+      _isLoading = false;
+      _errorMessage = e.message;
+      notifyListeners();
+    } on TimeoutException {
+      _isLoading = false;
+      _errorMessage = 'Request timeout. The server took too long to respond. Please try again.';
+      notifyListeners();
+    } on SocketException {
+      _isLoading = false;
+      _errorMessage = 'Network error. Please check your internet connection and ensure the server is running.';
+      notifyListeners();
     } catch (e) {
       _isLoading = false;
       _errorMessage = 'Failed to load risk assessment: ${e.toString()}';
@@ -195,6 +264,21 @@ class RiskAssessmentProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return riskAssessments;
+    } on ApiException catch (e) {
+      _isLoading = false;
+      _errorMessage = e.message;
+      notifyListeners();
+      return [];
+    } on TimeoutException {
+      _isLoading = false;
+      _errorMessage = 'Request timeout. The server took too long to respond. Please try again.';
+      notifyListeners();
+      return [];
+    } on SocketException {
+      _isLoading = false;
+      _errorMessage = 'Network error. Please check your internet connection and ensure the server is running.';
+      notifyListeners();
+      return [];
     } catch (e) {
       _isLoading = false;
       _errorMessage = 'Failed to load pending reports: ${e.toString()}';
@@ -215,6 +299,21 @@ class RiskAssessmentProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return riskAssessments;
+    } on ApiException catch (e) {
+      _isLoading = false;
+      _errorMessage = e.message;
+      notifyListeners();
+      return [];
+    } on TimeoutException {
+      _isLoading = false;
+      _errorMessage = 'Request timeout. The server took too long to respond. Please try again.';
+      notifyListeners();
+      return [];
+    } on SocketException {
+      _isLoading = false;
+      _errorMessage = 'Network error. Please check your internet connection and ensure the server is running.';
+      notifyListeners();
+      return [];
     } catch (e) {
       _isLoading = false;
       _errorMessage = 'Failed to load approved reports: ${e.toString()}';
@@ -235,6 +334,21 @@ class RiskAssessmentProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
+    } on ApiException catch (e) {
+      _isLoading = false;
+      _errorMessage = e.message;
+      notifyListeners();
+      return false;
+    } on TimeoutException {
+      _isLoading = false;
+      _errorMessage = 'Request timeout. The server took too long to respond. Please try again.';
+      notifyListeners();
+      return false;
+    } on SocketException {
+      _isLoading = false;
+      _errorMessage = 'Network error. Please check your internet connection and ensure the server is running.';
+      notifyListeners();
+      return false;
     } catch (e) {
       _isLoading = false;
       _errorMessage = 'Failed to approve risk assessment: ${e.toString()}';

@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import '../config/api_config.dart';
 import '../models/user.dart';
+import '../services/http_service.dart';
 
 class AuthService {
   // Use centralized API configuration
@@ -24,7 +25,8 @@ class AuthService {
         return jsonDecode(response.body);
       } else {
         final errorBody = jsonDecode(response.body);
-        throw Exception(errorBody['detail'] ?? 'Login failed');
+        final errorMessage = errorBody['detail'] ?? 'Login failed';
+        throw ApiException(errorMessage, statusCode: response.statusCode);
       }
     } catch (e) {
       if (kDebugMode) {
@@ -61,8 +63,23 @@ class AuthService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         return jsonDecode(response.body);
       } else {
-        final errorBody = jsonDecode(response.body);
-        throw Exception(errorBody['detail'] ?? 'Registration failed');
+        String errorMessage = 'Registration failed';
+        try {
+          final errorBody = jsonDecode(response.body);
+          errorMessage = errorBody['detail'] ?? errorMessage;
+        } catch (e) {
+          // If response body is not valid JSON, use the status code to determine error
+          if (response.statusCode == 409) {
+            errorMessage = 'Email already exists';
+          } else if (response.statusCode == 400) {
+            errorMessage = 'Invalid registration data';
+          } else if (response.statusCode == 401) {
+            errorMessage = 'Unauthorized';
+          } else if (response.statusCode == 403) {
+            errorMessage = 'Forbidden';
+          }
+        }
+        throw ApiException(errorMessage, statusCode: response.statusCode);
       }
     } catch (e) {
       if (kDebugMode) {

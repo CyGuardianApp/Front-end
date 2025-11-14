@@ -33,7 +33,12 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _tabController = TabController(length: 3, vsync: this);
+    // Determine number of tabs based on user role
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.user;
+    final isCSHead = user?.role == user_model.UserRole.cyberSecurityHead;
+    final tabCount = isCSHead ? 3 : 2; // CISO: All, Completed, Drafts | SubDept: Pending, Completed
+    _tabController = TabController(length: tabCount, vsync: this);
     Future.delayed(Duration.zero, () {
       final questionnaireProvider =
           Provider.of<QuestionnaireProvider>(context, listen: false);
@@ -92,7 +97,7 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
           tabs: [
             Tab(text: isCSHead ? 'All' : 'Pending'),
             const Tab(text: 'Completed'),
-            const Tab(text: 'Drafts'),
+            if (isCSHead) const Tab(text: 'Drafts'), // Only show Drafts tab for CISO
           ],
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white.withOpacity(0.7),
@@ -161,19 +166,20 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen>
               isCSHead,
               QuestionnaireStatus.completed),
 
-          // Drafts Tab
-          _buildDraftsList(
-              context,
-              questionnaireProvider,
-              user_model.User(
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                departmentId: user.domain,
-                departmentName: user.departmentName,
-              ),
-              isCSHead),
+          // Drafts Tab (only for CISO)
+          if (isCSHead)
+            _buildDraftsList(
+                context,
+                questionnaireProvider,
+                user_model.User(
+                  id: user.id,
+                  name: user.name,
+                  email: user.email,
+                  role: user.role,
+                  departmentId: user.domain,
+                  departmentName: user.departmentName,
+                ),
+                isCSHead),
         ],
       ),
 
