@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class ApiConfig {
   // Environment configuration
   static const bool _isProduction =
-      true; // Changed to false for local development
+      false; // Changed to false for local development
 
   // Development URLs (localhost)
   static const String _devWebUrl = 'http://127.0.0.1:8000';
